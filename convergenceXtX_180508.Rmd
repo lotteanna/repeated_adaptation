@@ -1,0 +1,450 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+Convergence
+===
+
+> Script by Lotte van Boheemen
+
+
+```{r, include=F}
+library("knitr")
+library("dplyr")
+library("plyr")
+library("ggplot2")
+library("reshape")
+library("car")
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
+```
+
+*Read in data SNPs*
+---  
+
+
+```{r}
+cdata <- read.table("rawfiles/refgenome_data.txt",header=T) #reference genome with all scaffold names and lenght
+xdat_all<-read.table("rawfiles/xtx_all_ddgbs.txt", header=T) #snp table with scaffold names, location of SNPs and xtx values
+xdat_na<-read.table("rawfiles/xtx_na_ddgbs.txt", header=T) 
+xdat_eu<-read.table("rawfiles/xtx_eu_ddgbs.txt", header=T) 
+xdat_au <- read.table("rawfiles/xtx_au_ddgbs.txt", header=T)
+
+x_all<-left_join(xdat_all,cdata,by="contig")
+x_all$contig <- as.factor(x_all$contig)
+x_all$xtx_all <- x_all$xtx
+x_all$myrank <- rank(x_all$xtx)/length(x_all$xtx)
+x_all$sub1 <- paste (x_all[,1],x_all[,2],sep = "__") # paste scaf and loc together so we can identify same SNPs in datasets
+
+x_na<-left_join(xdat_na,cdata,by="contig")
+x_na$contig <- as.factor(x_na$contig)
+x_na$xtx_na <- x_na$xtx
+x_na$myrank <- rank(x_na$xtx)/length(x_na$xtx)
+
+x_na$sub1 <- paste (x_na[,1],x_na[,2],sep = "__") # paste scaf and loc together so we can identify same SNPs in datasets
+hist(x_na$xtx)
+
+x_eu <- left_join(xdat_eu,cdata,by="contig")
+x_eu$contig<-as.factor(x_eu$contig)
+x_eu$xtx_eu <- x_eu$xtx
+x_eu$myrank <- rank(x_eu$xtx)/length(x_eu$xtx)
+
+x_eu$sub1 <- paste (x_eu[,1],x_eu[,2],sep = "__") # paste scaf and loc together so we can identify same SNPs in datasets
+hist(x_eu$xtx)
+
+x_au <- left_join(xdat_au, cdata, by = "contig") # xtx data native range
+x_au$contig <- as.factor(x_au$contig)
+x_au$xtx_au <- x_au$xtx
+x_au$myrank <- rank(x_au$xtx)/length(x_au$xtx)
+
+x_au$sub1 <- paste(x_au$contig,x_au$location,sep="__")
+hist(x_au$xtx)
+
+x_glna <- inner_join(x_all,x_na,by="sub1") #merge the datafiles form paired ranges
+x_gleu <- inner_join(x_all,x_eu,by="sub1") #merge the datafiles form paired ranges
+x_glau <- inner_join(x_all,x_eu,by="sub1") #merge the datafiles form paired ranges
+
+x_naeu <- inner_join(x_eu,x_na,by="sub1") #merge the datafiles form paired ranges
+x_naau<- inner_join(x_au,x_na,by="sub1") #merge the datafiles form paired ranges
+x_euau<- inner_join(x_au,x_eu,by="sub1") #merge the datafiles form paired ranges
+```
+
+*Read in data windows*
+---
+
+```{r}
+win_na = read.table("xtx_1000_99_allwind/sres1000-1000_na99_allwinds", header=T)
+win_eu = read.table("xtx_1000_99_allwind/sres1000-1000_eu99_allwinds", header=T)
+win_au = read.table("xtx_1000_99_allwind/sres1000-1000_au99_allwinds", header=T)
+
+win_na$windID = paste0(win_na$contig, "__", win_na$win.start)
+win_eu$windID = paste0(win_eu$contig, "__", win_eu$win.start)
+win_au$windID = paste0(win_au$contig, "__", win_au$win.start)
+
+xw_naeu <- inner_join(win_na,win_eu,by="windID") #merge the datafiles form paired ranges
+xw_naau<- inner_join(win_na,win_au,by="windID") #merge the datafiles form paired ranges
+xw_euau<- inner_join(win_eu,win_au,by="windID") #merge the datafiles form paired ranges
+```
+
+*Plot range correlations SNPs*
+---   
+
+Following Renaut et al (2014)
+
+- Find SNPs present in both range pairs
+- Calculate Pearson's correlation coefficient between XtX values for SNPs present in both range pairs
+- Group SNPs in 5% quantiles based on XtX values
+- Find overlapping patterns in quantiles between paired ranges
+
+Plot the values to get a correlation graph
+```{r}
+pdf("_Graph/corGlNa.pdf",height=4,width=4)
+ggplot(x_glna, aes(x = xtx_na, y = xtx_all))  + xlab(expression("XTX values native, North America"))+  ylab("XTX values global")+ geom_point(size=.5)+ theme_bw()
+dev.off()
+cor.test(x_glna$xtx_na,x_glna$xtx_all,method="pearson")
+```
+
+Plot the values to get a correlation graph
+```{r}
+pdf("_Graph/corNaEu.pdf",height=4,width=4)
+ggplot(x_naeu, aes(x = xtx_eu, y = xtx_na))  + xlab(expression("XTX values introduced, Europe"))+  ylab("XTX values native, North America")+ geom_point(size=.5)+ theme_bw()
+dev.off()
+cor.test(x_naeu$xtx_na,x_naeu$xtx_eu,method="pearson")
+```
+
+Plot the values to get a correlation graph
+```{r}
+pdf("_Graph/corNaEu.pdf",height=4,width=4)
+ggplot(x_naeu, aes(x = xtx_eu, y = xtx_na))  + xlab(expression("XTX values introduced, Europe"))+  ylab("XTX values native, North America")+ geom_point(size=.5)+ theme_bw()
+dev.off()
+cor.test(x_naeu$xtx_na,x_naeu$xtx_eu,method="pearson")
+```
+
+
+Plot the values to get a correlation graph
+```{r}
+pdf("_Graph/corNaEu.pdf",height=4,width=4)
+ggplot(x_naeu, aes(x = xtx_eu, y = xtx_na))  + xlab(expression("XTX values introduced, Europe"))+  ylab("XTX values native, North America")+ geom_point(size=.5)+ theme_bw()
+dev.off()
+cor.test(x_naeu$xtx_na,x_naeu$xtx_eu,method="spearman")
+```
+
+Plot the values to get a correlation graph
+```{r}
+pdf("_Graph/corNaAu.pdf",height=4,width=4)
+ggplot(x_naau, aes(x = xtx_au, y = xtx_na))  + xlab(expression("XTX values introduced, Australia"))+  ylab("XTX values native, North America")+ geom_point(size=.5)+ theme_bw()
+dev.off()
+cor.test(x_naau$xtx_na,x_naau$xtx_au,method="spearman")
+```
+
+Plot the values to get a correlation graph
+```{r}
+pdf("_Graph/corEuAu.pdf",height=4,width=4)
+ggplot(x_euau, aes(x = xtx_au, y = xtx_eu))  + xlab(expression("XTX values introduced, Australia"))+  ylab("XTX values introduced, Europe")+ geom_point(size=.5)+ theme_bw()
+dev.off()
+cor.test(x_euau$xtx_eu,x_euau$xtx_au,method="spearman")
+```
+
+
+
+*Plot range correlations windows*
+---   
+
+```{r}
+pdf("_Graph/corNaEu_wind.pdf",height=4,width=4)
+ggplot(xw_naeu, aes(x = win.mean.x, y = win.mean.y))  + xlab(expression("XTX values introduced, Europe"))+  ylab("XTX values native, North America")+ geom_point(size=.5)+ theme_bw()
+dev.off()
+cor.test(xw_naeu$win.mean.x,xw_naeu$win.mean.y,method="pearson")
+
+pdf("_Graph/corNaAu.pdf",height=4,width=4)
+ggplot(xw_naau, aes(x = win.mean.x, y = win.mean.y))  + xlab(expression("XTX values introduced, Australia"))+  ylab("XTX values native, North America")+ geom_point(size=.5)+ theme_bw()
+dev.off()
+cor.test(xw_naau$win.mean.x,xw_naau$win.mean.y,method="pearson")
+
+pdf("_Graph/corEuAu.pdf",height=4,width=4)
+ggplot(xw_euau, aes(x = win.mean.x, y = win.mean.y))  + xlab(expression("XTX values introduced, Australia"))+  ylab("XTX values introduced, Europe")+ geom_point(size=.5)+ theme_bw()
+dev.off()
+cor.test(xw_euau$win.mean.x,xw_euau$win.mean.y,method="pearson")
+```
+
+
+*Binning SNPs*
+---
+Rank the SNPs based on the XtX values per range and bin the SNPs in each range based this ranking (binning is done on percentiles, not absolute numbers)
+
+
+```{r}
+x_naeu$myrank_na <- rank(x_naeu$xtx_na)/length(x_naeu$xtx_na)
+x_naeu$bin_na1 <- cut(x_naeu$myrank_na, 100, labels=1:100)
+x_naeu$bin_na5 <- cut(x_naeu$myrank_na, 20, labels=1:20)
+x_naeu$bin_na1 <- as.numeric(x_naeu$bin_na1)
+x_naeu$bin_na5 <- as.numeric(x_naeu$bin_na5)
+
+x_naeu$myrank_eu <- rank(x_naeu$xtx_eu)/length(x_naeu$xtx_eu)
+x_naeu$bin_eu1 <- cut(x_naeu$myrank_eu, 100, labels=1:100)
+x_naeu$bin_eu5 <- cut(x_naeu$myrank_eu, 20, labels=1:20)
+x_naeu$bin_eu1 <- as.numeric(x_naeu$bin_eu1)
+x_naeu$bin_eu5 <- as.numeric(x_naeu$bin_eu5)
+
+x_naau$myrank_na <- rank(x_naau$xtx_na)/length(x_naau$xtx_na)
+x_naau$bin_na1 <- cut(x_naau$myrank_na, 100, labels=1:100)
+x_naau$bin_na5 <- cut(x_naau$myrank_na, 20, labels=1:20)
+x_naau$bin_na1 <- as.numeric(x_naau$bin_na1)
+x_naau$bin_na5 <- as.numeric(x_naau$bin_na5)
+
+x_naau$myrank_au<-rank(x_naau$xtx_au)/length(x_naau$xtx_au)
+x_naau$bin_au1 <- cut(x_naau$myrank_au, 100, labels=1:100)
+x_naau$bin_au5 <- cut(x_naau$myrank_au, 20, labels=1:20)
+x_naau$bin_au1 <- as.numeric(x_naau$bin_au1)
+x_naau$bin_au5 <- as.numeric(x_naau$bin_au5)
+
+x_euau$myrank_eu<-rank(x_euau$xtx_eu)/length(x_euau$xtx_eu)
+x_euau$bin_eu1 <- cut(x_euau$myrank_eu, 100, labels=1:100)
+x_euau$bin_eu5 <- cut(x_euau$myrank_eu, 20, labels=1:20)
+x_euau$bin_eu1 <- as.numeric(x_euau$bin_eu1)
+x_euau$bin_eu5 <- as.numeric(x_euau$bin_eu5)
+
+x_euau$myrank_au<-rank(x_euau$xtx_au)/length(x_euau$xtx_au)
+x_euau$bin_au1 <- cut(x_euau$myrank_au, 100, labels=1:100)
+x_euau$bin_au5 <- cut(x_euau$myrank_au, 20, labels=1:20)
+x_euau$bin_au1 <- as.numeric(x_euau$bin_au1)
+x_euau$bin_au5 <- as.numeric(x_euau$bin_au5)
+```
+
+
+*Binning windows*
+---
+
+```{r}
+xw_naeu$myrank_na <- rank(xw_naeu$win.mean.x)/length(xw_naeu$win.mean.x)
+xw_naeu$myrank_eu <- rank(xw_naeu$win.mean.y)/length(xw_naeu$win.mean.y)
+xw_naau$myrank_na <- rank(xw_naau$win.mean.x)/length(xw_naau$win.mean.x)
+xw_naau$myrank_au <- rank(xw_naau$win.mean.y)/length(xw_naau$win.mean.y)
+xw_euau$myrank_eu <- rank(xw_euau$win.mean.x)/length(xw_euau$win.mean.x)
+xw_euau$myrank_au <- rank(xw_euau$win.mean.y)/length(xw_euau$win.mean.y)
+
+xw_naeu$bin_na5 <- as.numeric(cut(xw_naeu$myrank_na, 20, labels=1:20))
+xw_naeu$bin_eu5 <- as.numeric(cut(xw_naeu$myrank_eu, 20, labels=1:20))
+
+xw_naau$bin_na5 <- as.numeric(cut(xw_naau$myrank_na, 20, labels=1:20))
+xw_naau$bin_au5 <- as.numeric(cut(xw_naau$myrank_au, 20, labels=1:20))
+
+xw_euau$bin_eu5 <- as.numeric(cut(xw_euau$myrank_eu, 20, labels=1:20))
+xw_euau$bin_au5 <- as.numeric(cut(xw_euau$myrank_au, 20, labels=1:20))
+
+xw_naeu$bin_na1 <- as.numeric(cut(xw_naeu$myrank_na, 100, labels=1:100))
+xw_naeu$bin_eu1 <- as.numeric(cut(xw_naeu$myrank_eu, 100, labels=1:100))
+
+xw_naau$bin_na1 <- as.numeric(cut(xw_naau$myrank_na, 100, labels=1:100))
+xw_naau$bin_au1 <- as.numeric(cut(xw_naau$myrank_au, 100, labels=1:100))
+
+xw_euau$bin_eu1 <- as.numeric(cut(xw_euau$myrank_eu, 100, labels=1:100))
+xw_euau$bin_au1 <- as.numeric(cut(xw_euau$myrank_au, 100, labels=1:100))
+```
+
+**Count for each bin how many SNPs for paired ranges fall in the same bin**
+---  
+
+20 bins
+```{r}
+p= 0.05^2 # chance of sharing a bin (number of bins NA * number of bins EU)
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(x_naeu)){
+  if(x_naeu$bin_na5[i] == x_naeu$bin_eu5[i]){
+    bincount[i,] <- c(x_naeu$bin_na5[i], x_naeu$sub1[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naeu20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_naeu20$ranges = "NAEU"
+obsexp_naeu20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1 
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(x_naau)){
+  if(x_naau$bin_na5[i] == x_naau$bin_au5[i]){
+    bincount[i,] <- c(x_naau$bin_na5[i], x_naau$sub1[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_naau20$ranges = "NAAU"
+obsexp_naau20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(x_euau)){
+  if(x_euau$bin_eu5[i] == x_euau$bin_au5[i]){
+    bincount[i,] <- c(x_euau$bin_eu5[i], x_euau$sub1[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_euau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_euau20$ranges = "EUAU"
+obsexp_euau20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+```
+
+100 bins
+```{r}
+p= 0.01^2 # chance of sharing a bin (number of bins NA * number of bins EU)
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(x_naeu)){
+  if(x_naeu$bin_na1[i] == x_naeu$bin_eu1[i]){
+    bincount[i,] <- c(x_naeu$bin_na1[i], x_naeu$sub1[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naeu1 <- as.data.frame(table(bincount$bin)/(0.01^2*nrow(bincount)))
+obsexp_naeu1$ranges = "NAEU"
+obsexp_naeu1$ci95 = (0.01^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1 
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(x_naau)){
+  if(x_naau$bin_na1[i] == x_naau$bin_au1[i]){
+    bincount[i,] <- c(x_naau$bin_na1[i], x_naau$sub1[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naau1 <- as.data.frame(table(bincount$bin)/(0.01^2*nrow(bincount)))
+obsexp_naau1$ranges = "NAAU"
+obsexp_naau1$ci95 = (0.01^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(x_euau)){
+  if(x_euau$bin_eu1[i] == x_euau$bin_au1[i]){
+    bincount[i,] <- c(x_euau$bin_eu1[i], x_euau$sub1[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_euau1 <- as.data.frame(table(bincount$bin)/(0.01^2*nrow(bincount)))
+obsexp_euau1$ranges = "EUAU"
+obsexp_euau1$ci95 = (0.01^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+```
+
+plot
+```{r}
+obsexp_all = rbind(obsexp_naeu20, obsexp_naau20, obsexp_euau20)
+obsexp_all$percent <- as.numeric(obsexp_all$Var1) * 0.05
+
+pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/binall_xtxsnp.pdf",height=4,width=4)
+  ggplot()+
+  geom_bar(data = obsexp_all, aes(percent, Freq, fill = ranges),stat = 'identity',position="dodge") +
+  geom_bar(data = obsexp_all, aes(percent, ci95, fill = ranges) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+xlab("Quantiles")+  ylab("Observed/Expected shared SNPs") + theme_bw() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) + ylim(0,8.5) +theme(legend.position="none")
+dev.off()
+
+
+obsexp_all = rbind(obsexp_naeu1, obsexp_naau1, obsexp_euau1)
+obsexp_all$percent <- as.numeric(obsexp_all$Var1) * 0.01
+
+pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/binall100_xtxsnp.pdf",height=8,width=8)
+  ggplot()+
+  geom_bar(data = obsexp_all, aes(percent, Freq, fill = ranges),stat = 'identity',position="dodge") +
+  geom_bar(data = obsexp_all, aes(percent, ci95, fill = ranges) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+xlab("Quantiles")+  ylab("Observed/Expected shared SNPs") + theme_bw() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) + theme(legend.position="none")
+dev.off()
+
+```
+
+
+
+
+**Count for each bin how many windows for paired ranges fall in the same bin**
+---  
+
+20 bins
+```{r}
+p= 0.05^2 # chance of sharing a bin (number of bins NA * number of bins EU)
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(xw_naeu)){
+  if(xw_naeu$bin_na5[i] == xw_naeu$bin_eu5[i]){
+    bincount[i,] <- c(xw_naeu$bin_na5[i], xw_naeu$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naeu20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_naeu20$ranges = "NAEU"
+obsexp_naeu20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1 
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(xw_naau)){
+  if(xw_naau$bin_na5[i] == xw_naau$bin_au5[i]){
+    bincount[i,] <- c(xw_naau$bin_na5[i], xw_naau$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_naau20$ranges = "NAAU"
+obsexp_naau20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(xw_euau)){
+  if(xw_euau$bin_eu5[i] == xw_euau$bin_au5[i]){
+    bincount[i,] <- c(xw_euau$bin_eu5[i], xw_euau$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_euau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_euau20$ranges = "EUAU"
+obsexp_euau20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+```
+
+100 bins
+```{r}
+p= 0.01^2 # chance of sharing a bin (number of bins NA * number of bins EU)
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(xw_naeu)){
+  if(xw_naeu$bin_na1[i] == xw_naeu$bin_eu1[i]){
+    bincount[i,] <- c(xw_naeu$bin_na1[i], xw_naeu$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naeu1 <- as.data.frame(table(bincount$bin)/(0.01^2*nrow(bincount)))
+obsexp_naeu1$ranges = "NAEU"
+obsexp_naeu1$ci95 = (0.01^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1 
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(xw_naau)){
+  if(xw_naau$bin_na1[i] == xw_naau$bin_au1[i]){
+    bincount[i,] <- c(xw_naau$bin_na1[i], xw_naau$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naau1 <- as.data.frame(table(bincount$bin)/(0.01^2*nrow(bincount)))
+obsexp_naau1$ranges = "NAAU"
+obsexp_naau1$ci95 = (0.01^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(xw_euau)){
+  if(xw_euau$bin_eu1[i] == xw_euau$bin_au1[i]){
+    bincount[i,] <- c(xw_euau$bin_eu1[i], xw_euau$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_euau1 <- as.data.frame(table(bincount$bin)/(0.01^2*nrow(bincount)))
+obsexp_euau1$ranges = "EUAU"
+obsexp_euau1$ci95 = (0.01^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+```
+
+plot
+```{r}
+obsexp_all = rbind(obsexp_naeu20, obsexp_naau20, obsexp_euau20)
+obsexp_all$percent <- as.numeric(obsexp_all$Var1) * 0.05
+
+pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/binall_xtxwind.pdf",height=4,width=4)
+  ggplot()+
+  geom_bar(data = obsexp_all, aes(percent, Freq, fill = ranges),stat = 'identity',position="dodge") +
+  geom_bar(data = obsexp_all, aes(percent, ci95, fill = ranges) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+xlab("Quantiles")+  ylab("Observed/Expected shared windows") + theme_bw() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) + ylim(0,8.5) +theme(legend.position="none")
+dev.off()
+
+
+obsexp_all = rbind(obsexp_naeu1, obsexp_naau1, obsexp_euau1)
+obsexp_all$percent <- as.numeric(obsexp_all$Var1) /100
+
+pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/binall_xtxwind.pdf",height=8,width=8)
+  ggplot()+
+  geom_bar(data = obsexp_all, aes(Var1, Freq, fill = ranges),stat = 'identity',position="dodge") +
+  geom_bar(data = obsexp_all, aes(Var1, ci95, fill = ranges) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+xlab("Quantiles")+  ylab("Observed/Expected shared windows") + theme_bw() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))  +theme(legend.position="none")
+dev.off()
+```
+
+
+
+**END SCRIPT**
+---

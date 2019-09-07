@@ -1,0 +1,318 @@
+
+
+
+```{r, include=F}
+library(gdata)
+library(dplyr)
+```
+
+```{r}
+loci <- read.table("locinames", header=T)
+
+#get full genome data for 10% SNP call rate
+cdata <- read.table("refgenome_data.txt",header=T)
+xdat_all <- read.table("xtx_all_ddgbs.txt",header=T)
+x_all <- left_join(xdat_all,cdata,by="contig")
+x_all$contig <- as.factor(x_all$contig)
+```
+
+
+```{r}
+p15_7 <- cbind(loci, read.table("15_7.mlma", header=T))
+p17_4 <- cbind(loci, read.table("17_4.mlma", header=T))
+p18_3 <- cbind(loci, read.table("18_3.mlma", header=T))
+p18_6 <- cbind(loci, read.table("18_6.mlma", header=T))
+p18_8 <- cbind(loci, read.table("18_8.mlma", header=T))
+p21_5 <- cbind(loci, read.table("21_5.mlma", header=T))
+p23_8 <- cbind(loci, read.table("23_8.mlma", header=T))
+branches <- cbind(loci, read.table("branches.mlma", header=T))
+dich <- cbind(loci, read.table("dich.mlma", header=T))
+dieday <- cbind(loci, read.table("dieday.mlma", header=T))
+femday <- cbind(loci, read.table("femday.mlma", header=T))
+fitall <- cbind(loci, read.table("fitall.mlma", header=T))
+flstart <- cbind(loci, read.table("flstart.mlma", header=T))
+grodays <- cbind(loci, read.table("grodays.mlma", header=T))
+inflx <- cbind(loci, read.table("inflx.mlma", header=T))
+lonleaf <- cbind(loci, read.table("lonleaf.mlma", header=T))
+maxslope <- cbind(loci, read.table("maxslope.mlma", header=T))
+maxheight <- cbind(loci, read.table("maxheight.mlma", header=T))
+stemwd <- cbind(loci, read.table("stemwd.mlma", header=T))
+peakarea <- cbind(loci, read.table("peakarea.mlma", header=T))
+peaks <- cbind(loci, read.table("peaks.mlma", header=T))
+polday <- cbind(loci, read.table("polday.mlma", header=T))
+racelength <- cbind(loci, read.table("racelength.mlma", header=T))
+racemes <- cbind(loci, read.table("racemes.mlma", header=T))
+repal <- cbind(loci, read.table("repal.mlma", header=T))
+rosho <- cbind(loci, read.table("rosho.mlma", header=T))
+seed20 <- cbind(loci, read.table("seed20.mlma", header=T))
+seedtot <- cbind(loci, read.table("seedtot.mlma", header=T))
+seedwt <- cbind(loci, read.table("seedwt.mlma", header=T))
+sexrat <- cbind(loci, read.table("sexrat.mlma", header=T))
+shootwt <- cbind(loci, read.table("shootwt.mlma", header=T))
+sla <- cbind(loci, read.table("sla.mlma", header=T))
+totwt <- cbind(loci, read.table("totwt.mlma", header=T))
+trichome <- cbind(loci, read.table("trichome.mlma", header=T))
+```
+
+
+Combine datasets for downstream analyses (package gdata)
+```{r}
+mlma_all <- combine(p15_7, p17_4, p18_3, p18_6, p18_8, p21_5, p23_8, branches, dich, dieday, femday, fitall, flstart, grodays, inflx, lonleaf, maxslope, peakarea, peaks, polday, racelength, racemes, repal, rosho, seed20, seedtot, seedwt, sexrat, shootwt, sla, totwt, trichome ,maxheight, stemwd) #combine doesn't work when dplyr is active
+mlma_all$myrank = rank(mlma_all$p)/length(mlma_all$p)
+p15_7 = mlma_all[which(mlma_all$source=="p15_7"),]
+p17_4 = mlma_all[which(mlma_all$source=="p17_4"),]
+p18_3 = mlma_all[which(mlma_all$source=="p18_3"),]
+p18_6 = mlma_all[which(mlma_all$source=="p18_6"),]
+p18_8 = mlma_all[which(mlma_all$source=="p18_8"),]
+p21_5 = mlma_all[which(mlma_all$source=="p21_5"),]
+p23_8 = mlma_all[which(mlma_all$source=="p23_8"),]
+branches = mlma_all[which(mlma_all$source=="branches"),]
+dich = mlma_all[which(mlma_all$source=="dich"),]
+dieday = mlma_all[which(mlma_all$source=="dieday"),]
+femday = mlma_all[which(mlma_all$source=="femday"),]
+fitall = mlma_all[which(mlma_all$source=="fitall"),]
+flstart = mlma_all[which(mlma_all$source=="flstart"),]
+grodays = mlma_all[which(mlma_all$source=="grodays"),]
+inflx = mlma_all[which(mlma_all$source=="inflx"),]
+lonleaf = mlma_all[which(mlma_all$source=="lonleaf"),]
+maxslope = mlma_all[which(mlma_all$source=="maxslope"),]
+peakarea = mlma_all[which(mlma_all$source=="peakarea"),]
+peaks = mlma_all[which(mlma_all$source=="peaks"),]
+polday = mlma_all[which(mlma_all$source=="polday"),]
+racelength = mlma_all[which(mlma_all$source=="racelength"),]
+racemes = mlma_all[which(mlma_all$source=="racemes"),]
+repal = mlma_all[which(mlma_all$source=="repal"),]
+rosho = mlma_all[which(mlma_all$source=="rosho"),]
+seed20 = mlma_all[which(mlma_all$source=="seed20"),]
+seedtot = mlma_all[which(mlma_all$source=="seedtot"),]
+seedwt = mlma_all[which(mlma_all$source=="seedwt"),]
+sexrat = mlma_all[which(mlma_all$source=="sexrat"),]
+shootwt = mlma_all[which(mlma_all$source=="shootwt"),]
+sla = mlma_all[which(mlma_all$source=="sla"),]
+totwt = mlma_all[which(mlma_all$source=="totwt"),]
+trichome = mlma_all[which(mlma_all$source=="trichome"),]
+maxheight = mlma_all[which(mlma_all$source=="maxheight"),]
+stemwd = mlma_all[which(mlma_all$source=="stemwd"),]
+
+```
+
+
+Window CHECK IF USING P CUT-OFF OR TOP % CUT-OFF
+---
+
+```{r}
+#window length in bases
+win.length <- 1000
+# slide in bases
+slide <- 1000
+
+outlier.window <- function(data, trait, output, top){ 
+  # prepare the space for results to be written to
+  results <- data.frame(phen=numeric(), contig=numeric(),windID= numeric(),win.start=numeric(), win.end = numeric(), current.window = numeric(), num.SNPs = numeric(), num.outlier = numeric(), win.mean.pval = numeric(), win.mean.effectsize = numeric())
+  SNPinfo <- data.frame(phen=numeric(),contig=numeric(),location = numeric(), effectsize = numeric(), pval=numeric(), myrank=numeric(), win.start = numeric(), win.end = numeric())
+  #set index for results, this is the index of window passed threshold
+  j <- 1
+  #set index for SNPinfo results, where every line is a SNP and all information
+  a <- 1
+  phendata = data 
+  # create a vector including names of each contig for which SNPs have been found
+  cont <- levels(factor(phendata$contig)) 
+  # Loop through each contig, stop the loop at the final contig
+  for(k in 1: length(cont)){
+    # vector with bf values for all SNPs in each contig
+    b <- phendata$b[which(phendata$contig==cont[k])]
+    data2 = phendata[phendata$contig==cont[k],]
+    data2_all = x_all[x_all$contig==cont[k],]
+     if(nrow(data2_all)>0){
+      wID = 1 
+      win.start = as.numeric(data2_all$location[[1]])
+      last.loc <- as.numeric(max(data2$location))
+      
+      while(win.start <= last.loc){
+        win.end = win.start + slide - 1
+        wind = data2[which(data2$location>=win.start&data2$location<=win.end),]
+        
+        if(nrow(wind) > 0){ # only run for windows with SNPs
+          # calculate the number of SNPs in the window
+          numSNP <- as.numeric(nrow(wind))
+          current.window = as.numeric(max(wind$location)- min(wind$location))
+          #num.outlier <- sum(wind$myrank >= top)
+    
+          num.outlier <- sum(wind$p <= top)
+          win.meanp <- mean(wind$p)
+          win.meanb <- mean(wind$b)
+          
+         results[j, ] <- c(trait, cont[k], wID,win.start,win.end,current.window, numSNP, num.outlier, win.meanp,  win.meanb) #p cutoff
+    
+          j = j + 1
+          
+          # create seperate file with info for every SNP
+          for(b in 1:nrow(wind)){
+            SNPinfo[a,] <- c(trait, cont[k], wind$location[b], wind$b[b],wind$p[b],wind$myrank[b], win.start, win.end) # p cutoff
+            a <- a + 1
+          }
+        }
+      print(c(a,k, wID))
+      win.start = win.start + slide
+      wID = wID + 1
+  }## window
+  }
+} ## contig
+   write.table(results, file = output) 
+   temp <- paste0(output,"_SNPinfo")
+   write.table(SNPinfo, file = temp)
+}
+
+```
+
+top-cutoff
+```{r}
+#outlier.window(mlma_all, "gctaall_1000-1000_top99_allwinds", 0.99) #runs too long
+outlier.window(p15_7,"p15_7", "gcta15_7_1000-1000_top99_allwinds", 0.99)
+outlier.window(p17_4,"p17_4", "gcta17_4_1000-1000_top99_allwinds", 0.99)
+outlier.window(p18_3,"p18_3", "gcta18_3_1000-1000_top99_allwinds", 0.99)
+outlier.window(p18_6,"p18_6", "gcta18_6_1000-1000_top99_allwinds", 0.99)
+outlier.window(p18_8,"p18_8", "gcta18_8_1000-1000_top99_allwinds", 0.99)
+outlier.window(p21_5,"p21_5", "gct21_5a_1000-1000_top99_allwinds", 0.99)
+outlier.window(p23_8,"p23_8", "gcta23_8_1000-1000_top99_allwinds", 0.99)
+outlier.window(branches,"branches", "gctabranches_1000-1000_top99_allwinds", 0.99)
+outlier.window(dich,"dich", "gctadich_1000-1000_top99_allwinds", 0.99)
+outlier.window(dieday,"dieday", "gctadieday_1000-1000_top99_allwinds", 0.99)
+outlier.window(femday,"femday", "gctfemdaya_1000-1000_top99_allwinds", 0.99)
+outlier.window(fitall,"fitall", "gctafitall_1000-1000_top99_allwinds", 0.99)
+outlier.window(flstart,"flstart", "gctaflstart_1000-1000_top99_allwinds", 0.99)
+outlier.window(grodays,"grodays", "gctagrodays_1000-1000_top99_allwinds", 0.99)
+outlier.window(inflx,"inflx", "gctainflx_1000-1000_top99_allwinds", 0.99)
+outlier.window(lonleaf,"lonleaf", "gctlonleafa_1000-1000_top99_allwinds", 0.99)
+outlier.window(maxslope,"maxslope", "gctamaxslope_1000-1000_top99_allwinds", 0.99)
+outlier.window(peakarea,"peakarea", "gctapeakarea_1000-1000_top99_allwinds", 0.99)
+outlier.window(peaks,"peaks", "gctapeaks_1000-1000_top99_allwinds", 0.99)
+outlier.window(polday,"polday", "gctapolday_1000-1000_top99_allwinds", 0.99)
+outlier.window(racelength,"racelength", "gctaracelength_1000-1000_top99_allwinds", 0.99)
+outlier.window(racemes,"racemes", "gctaracemes_1000-1000_top99_allwinds", 0.99)
+outlier.window(repal,"repal", "gctarepal_1000-1000_top99_allwinds", 0.99)
+outlier.window(rosho,"rosho", "gctarosho_1000-1000_top99_allwinds", 0.99)
+outlier.window(seed20,"seed20", "gctaseed20_1000-1000_top99_allwinds", 0.99)
+outlier.window(seedtot,"seedtot", "gctaseedtot_1000-1000_top99_allwinds", 0.99)
+outlier.window(seedwt,"seedwt", "gctaseedwt_1000-1000_top99_allwinds", 0.99)
+outlier.window(sexrat,"sexrat", "gctasexrat_1000-1000_top99_allwinds", 0.99)
+outlier.window(shootwt,"shootwt", "gctashootwt_1000-1000_top99_allwinds", 0.99)
+outlier.window(sla,"sla", "gctasla_1000-1000_top99_allwinds", 0.99)
+outlier.window(totwt,"totwt", "gctatotwt_1000-1000_top99_allwinds", 0.99)
+outlier.window(trichome,"trichome", "gctatrichome_1000-1000_top99_allwinds", 0.99)
+outlier.window(maxheight,"maxheight", "gctamaxheight_1000-1000_top99_allwinds", 0.99)
+outlier.window(stemwd,"stemwd", "gctastemwd_1000-1000_top99_allwinds", 0.99)
+```
+
+p-cutoff
+```{r}
+outlier.window(p15_7,"p15_7", "gcta15_7_1000-1000_p05_allwinds", 0.05)
+outlier.window(p17_4,"p17_4", "gcta17_4_1000-1000_p05_allwinds", 0.05)
+outlier.window(p18_3,"p18_3", "gcta18_3_1000-1000_p05_allwinds", 0.05)
+outlier.window(p18_6,"p18_6", "gcta18_6_1000-1000_p05_allwinds", 0.05)
+outlier.window(p18_8,"p18_8", "gcta18_8_1000-1000_p05_allwinds", 0.05)
+outlier.window(p21_5,"p21_5", "gct21_5a_1000-1000_p05_allwinds", 0.05)
+outlier.window(p23_8,"p23_8", "gcta23_8_1000-1000_p05_allwinds", 0.05)
+outlier.window(branches,"branches", "gctabranches_1000-1000_p05_allwinds", 0.05)
+outlier.window(dich,"dich", "gctadich_1000-1000_p05_allwinds", 0.05)
+outlier.window(dieday,"dieday", "gctadieday_1000-1000_p05_allwinds", 0.05)
+outlier.window(femday,"femday", "gctfemdaya_1000-1000_p05_allwinds", 0.05)
+outlier.window(fitall,"fitall", "gctafitall_1000-1000_p05_allwinds", 0.05)
+outlier.window(flstart,"flstart", "gctaflstart_1000-1000_p05_allwinds", 0.05)
+outlier.window(grodays,"grodays", "gctagrodays_1000-1000_p05_allwinds", 0.05)
+outlier.window(inflx,"inflx", "gctainflx_1000-1000_p05_allwinds", 0.05)
+outlier.window(lonleaf,"lonleaf", "gctlonleafa_1000-1000_p05_allwinds", 0.05)
+outlier.window(maxslope,"maxslope", "gctamaxslope_1000-1000_p05_allwinds", 0.05)
+outlier.window(peakarea,"peakarea", "gctapeakarea_1000-1000_p05_allwinds", 0.05)
+outlier.window(peaks,"peaks", "gctapeaks_1000-1000_p05_allwinds", 0.05)
+outlier.window(polday,"polday", "gctapolday_1000-1000_p05_allwinds", 0.05)
+outlier.window(racelength,"racelength", "gctaracelength_1000-1000_p05_allwinds", 0.05)
+outlier.window(racemes,"racemes", "gctaracemes_1000-1000_p05_allwinds", 0.05)
+outlier.window(repal,"repal", "gctarepal_1000-1000_p05_allwinds", 0.05)
+outlier.window(rosho,"rosho", "gctarosho_1000-1000_p05_allwinds", 0.05)
+outlier.window(seed20,"seed20", "gctaseed20_1000-1000_p05_allwinds", 0.05)
+outlier.window(seedtot,"seedtot", "gctaseedtot_1000-1000_p05_allwinds", 0.05)
+outlier.window(seedwt,"seedwt", "gctaseedwt_1000-1000_p05_allwinds", 0.05)
+outlier.window(sexrat,"sexrat", "gctasexrat_1000-1000_p05_allwinds", 0.05)
+outlier.window(shootwt,"shootwt", "gctashootwt_1000-1000_p05_allwinds", 0.05)
+outlier.window(sla,"sla", "gctasla_1000-1000_p05_allwinds", 0.05)
+outlier.window(totwt,"totwt", "gctatotwt_1000-1000_p05_allwinds", 0.05)
+outlier.window(trichome,"trichome", "gctatrichome_1000-1000_p05_allwinds", 0.05)
+outlier.window(maxheight,"maxheight", "gctamaxheight_1000-1000_p05_allwinds", 0.05)
+outlier.window(stemwd,"stemwd", "gctastemwd_1000-1000_p05_allwinds", 0.05)
+```
+
+Binom
+---
+```{r}
+topcan.binom <- function(dat, output){
+  
+  ##Update following email Kay 13-7-16: the expected proportion is highly reduced when excluding windows with no outliers from the start. Better to run analyses with these windows and exclude no-outlier windows later on. 
+  #sdat <- subset(dat,num.outlier > 0) # exclude windows without outliers
+  sdat <- subset(dat,num.SNPs > 1) # exclude windows with less than 2 SNPs
+
+  #sdat <- dat
+  set.seed(0)
+  nsims <- 10000
+  maxn <- max(sdat$num.SNPs)
+  n <- seq(0, maxn, by = 1)
+
+  #Calculate the expected frequency of outlier SNPs per number of SNPs in a window:  p = ∑_i(a_i/n_i)  
+  totsnp1 <- sum(sdat$num.SNPs)
+  totout1 <- sum(sdat$num.outlier)
+  expect1 <- (totout1 / totsnp1)
+
+    # calculate quantiles
+  sdat$p3 <- qbinom (0.999, sdat$num.SNPs, expect1)
+
+  # Check which windows fall above the expected quantile distribution (for each range): top-candidate-outlier windows
+  
+  sdat$topcan_q <- (sdat$p3 <= sdat$num.outlier) & (sdat$num.outlier > 1) # change 4-9-16: only call topcan when >1 outlier
+  
+  coverage <- matrix(NA, nrow=length(n), 1)
+  q.upper <- matrix(NA, 1, nrow=length(n))
+   
+  # simulate y data and 99% quantile
+  for(i in 1:length(n)){
+    y <- rbinom(nsims, n[i], expect1)
+    ul <- qbinom(.999, n[i], expect1)
+    q.upper[i,] <- ul
+
+    # move the data into a workable dataframe
+    for(j in 1:1){
+      sig <- length(y[y/n[i] <= ul[j]])
+      coverage[i,j] <- sig/nsims
+    }
+  }
+  
+  write.table(sdat, file = output)
+  return(subset(sdat, topcan_q == "TRUE"))
+  
+}
+```
+
+
+```{r}
+gcta = read.table("gcta_all_1000-1000_p01_allwinds", header=T)
+gcta = read.table("gcta_all_1000-1000_p05_allwinds", header=T)
+gcta = read.table("gcta_all_1000-1000_top99_allwinds", header=T)
+
+topcan.binom(gcta, "sres_gctaall_1000-1000_p01_allwinds")
+topcan.binom(gcta, "sres_gctaall_1000-1000_p05_allwinds")
+topcan.binom(gcta, "sres_gctaall_1000-1000_top99_allwinds")
+
+gcta_wind <- read.table("sres_gctaall_1000-1000_p01_allwinds", header=T)
+gcta_wind <- read.table("sres_gctaall_1000-1000_p05_allwinds", header=T)
+gcta_wind <- read.table("sres_gctaall_1000-1000_top99_allwinds", header=T)
+
+test2_sup <- gcta_wind[which(gcta_wind$topcan_q=="TRUE"),]
+
+write.table(test2_sup, "gcta_1000_p01_supwind")
+write.table(test2_sup, "gcta_1000_p05_supwind")
+write.table(test2_sup, "gcta_1000_top99_supwind")
+
+
+```
+
+
+##END SCRIPT##

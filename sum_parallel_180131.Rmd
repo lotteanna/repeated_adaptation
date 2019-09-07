@@ -1,0 +1,95 @@
+Summary paralellism
+===
+
+Script by  
+
+Lotte van Boheemen
+
+Aim of this script is to combine different datasets into 1
+
+```{r,include=FALSE}
+library("knitr")
+library("dplyr")
+library("plyr")
+library(tidyr)
+```
+
+```{r}
+full <- read.table("nullwxtx_1000_99_allwin_all10K.txt", header=T)
+
+outEUinNA <- full[which(full$V10=="outEUinNA"),]
+outAUinNA <- full[which(full$V10=="outAUinNA"),]
+outAUinEU <- full[which(full$V10=="outAUinEU"),]
+outEUinAU <- full[which(full$V10=="outEUinAU"),]
+outNAinEU <- full[which(full$V10=="outNAinEU"),]
+outNAinAU <- full[which(full$V10=="outNAinAU"),]
+
+# rename columns
+colnames(outEUinNA) <- c("windID", "wilc_pval", "W", "num.SNP_EUNA", "mean.XTX_EUNA", "1K_XTX", "Z", "emperical_p_EUNA", "num.outlier_EUNA", "comp")
+colnames(outAUinNA) <- c("windID","wilc_pval", "W", "num.SNP_AUNA", "mean.XTX_AUNA", "1K_XTX", "Z", "emperical_p_AUNA", "num.outlier_AUNA", "comp")
+colnames(outAUinEU) <- c("windID","wilc_pval", "W", "num.SNP_AUEU", "mean.XTX_AUEU", "1K_XTX", "Z", "emperical_p_AUEU", "num.outlier_AUEU", "comp")
+colnames(outEUinAU) <- c("windID","wilc_pval", "W", "num.SNP_EUAU", "mean.XTX_EUAU", "1K_XTX", "Z", "emperical_p_EUAU", "num.outlier_EUAU", "comp")
+colnames(outNAinEU) <- c("windID","wilc_pval", "W", "num.SNP_NAEU", "mean.XTX_NAEU", "1K_XTX", "Z", "emperical_p_NAEU", "num.outlierNAEU", "comp")
+colnames(outNAinAU) <- c("windID","wilc_pval", "W", "num.SNP_NAAU", "mean.XTX_NAAU", "1K_XTX", "Z", "emperical_p_NAAU", "num.outlierNAAU", "comp")
+
+# select only columns of interest
+sub_outEUinNA <- select(outEUinNA, windID, num.SNP_EUNA, mean.XTX_EUNA,emperical_p_EUNA, num.outlier_EUNA)
+sub_outAUinNA <- select(outAUinNA ,windID, num.SNP_AUNA, mean.XTX_AUNA,emperical_p_AUNA, num.outlier_AUNA)
+sub_outAUinEU <- select(outAUinEU, windID, num.SNP_AUEU, mean.XTX_AUEU,emperical_p_AUEU, num.outlier_AUEU)
+sub_outEUinAU <- select(outEUinAU, windID, num.SNP_EUAU, mean.XTX_EUAU,emperical_p_EUAU, num.outlier_EUAU)
+sub_outNAinEU <- select(outNAinEU, windID, num.SNP_NAEU, mean.XTX_NAEU,emperical_p_NAEU, num.outlierNAEU)
+sub_outNAinAU <- select(outNAinAU, windID, num.SNP_NAAU, mean.XTX_NAAU,emperical_p_NAAU, num.outlierNAAU)
+
+
+# join datasets
+windW1 <- full_join(sub_outEUinNA, sub_outAUinNA, by = "windID") 
+windW2 <- full_join(windW1, sub_outAUinEU, by = "windID") 
+windW3 <- full_join(windW2, sub_outNAinEU, by = "windID") 
+windW4 <- full_join(windW3, sub_outEUinAU, by = "windID") 
+windW_all <- full_join(windW4, sub_outNAinAU, by = "windID") 
+
+
+# outlier windows identified with qbinom in "xtxwind_conv.Rmd""
+windna <- read.table("sres1000-1000_na99_allwinds", header = T)
+windeu <- read.table("sres1000-1000_eu99_allwinds", header = T)
+windau <- read.table("sres1000-1000_au99_allwinds", header = T)
+
+super_na <- subset(windna, topcan_q=="TRUE") #only select outlier windows
+super_na$windID <- paste(super_na$contig, super_na$win.start, super_na$win.end, sep="__")
+super_eu <- subset(windeu, topcan_q=="TRUE") #only select outlier windows
+super_eu$windID <- paste(super_eu$contig, super_eu$win.start, super_eu$win.end, sep="__")
+super_au <- subset(windau, topcan_q=="TRUE") 
+super_au$windID <- paste(super_au$contig, super_au$win.start, super_au$win.end, sep="__")
+
+# create subsets of outlier windows in each range with data needed for summary
+sub_super_na <- select(super_na, windID, num.SNPs, win.mean, num.outlier )
+colnames(sub_super_na) <- c("windID", "num.SNPs_NA","win.mean_NA", "num.outliers_NA")
+sub_super_eu <- select(super_eu, windID, num.SNPs, win.mean, num.outlier )
+colnames(sub_super_eu) <- c("windID", "num.SNPs_EU","win.mean_EU", "num.outliers_EU")
+sub_super_au <- select(super_au, windID, num.SNPs, win.mean, num.outlier )
+colnames(sub_super_au) <- c("windID", "num.SNPs_AU","win.mean_AU", "num.outliers_AU")
+
+#get a list of all outlier windows
+super_all1 <- full_join(sub_super_na, sub_super_eu, by = "windID")
+super_all2 <- full_join(super_all1, sub_super_au, by = "windID")
+
+all_windows <- full_join(super_all2, windW_all, by ="windID")
+
+#write.table(all_windows,"all_windows.txt")
+write.table(all_windows,"xtxall_windows_1000-1000_99_allwinds_par.txt")
+
+
+```
+
+What is the length of the contigs these windows are on
+
+```{r}
+cdata <- read.table("refgenome_data.txt",header=T)
+df <- select(all_windows, windID)
+df <- separate(data = df, col = windID, into = c("contig", "right"), sep = "\\__")
+
+windows <- left_join(df, cdata, by = "contig")
+write.table(windows,"all_windows__1000-1000_99_allwinds_info.txt")
+```
+
+##END SCRIPT##

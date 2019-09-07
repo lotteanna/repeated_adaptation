@@ -1,0 +1,1184 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+```{r}
+library("dplyr")
+library("tidyr")
+library("ggplot2")
+library("reshape")#melt
+library("car") #Anova
+library(gdata)
+library(tidyr) #spread
+library(fifer)
+library(VennDiagram)
+setwd("~/Documents/Monash/PhD/Analyses/Data")
+```
+
+
+
+Test number of outlier windows and test departures for expected distributions
+---
+
+Read data
+```{r}
+wind_na = read.table("bf_1000_99_allwind/sresbfall_na_1000_99_allwind.txt", header=T)
+wind_eu = read.table("bf_1000_99_allwind/sresbfall_eu_1000_99_allwind.txt", header=T)
+wind_au = read.table("bf_1000_99_allwind/sresbfall_au_1000_99_allwind.txt", header=T)
+
+xwind_na = read.table("xtx_1000_99_allwind/sres1000-1000_na99_allwinds", header=T)
+xwind_eu = read.table("xtx_1000_99_allwind/sres1000-1000_eu99_allwinds", header=T)
+xwind_au = read.table("xtx_1000_99_allwind/sres1000-1000_au99_allwinds", header=T)
+
+xwind_na$windID = paste0(xwind_na$contig, "__", xwind_na$win.start)
+xwind_eu$windID = paste0(xwind_eu$contig, "__", xwind_eu$win.start)
+xwind_au$windID = paste0(xwind_au$contig, "__", xwind_au$win.start)
+
+wind_na$windID = paste0(wind_na$contig, "__", wind_na$win.start)
+wind_eu$windID = paste0(wind_eu$contig, "__", wind_eu$win.start)
+wind_au$windID = paste0(wind_au$contig, "__", wind_au$win.start)
+wind_na$windIDenv = paste0(wind_na$windID, "__", wind_na$envvar)
+wind_eu$windIDenv = paste0(wind_eu$windID, "__", wind_eu$envvar)
+wind_au$windIDenv = paste0(wind_au$windID, "__", wind_au$envvar)
+#subset to binomial outlier windows
+
+supwind_na = wind_na %>% filter(topcan_q=="TRUE") %>% droplevels()
+envwind_na = count(supwind_na, envvar)
+supwind_eu = wind_eu %>% filter(topcan_q=="TRUE") %>% droplevels()
+envwind_eu = count(supwind_eu, envvar)
+supwind_au = wind_au %>% filter(topcan_q=="TRUE") %>% droplevels()
+envwind_au = count(supwind_au, envvar)
+
+xsupwind_na = xwind_na %>% filter(topcan_q=="TRUE") %>% droplevels()
+xsupwind_eu = xwind_eu %>% filter(topcan_q=="TRUE") %>% droplevels()
+xsupwind_au = xwind_au %>% filter(topcan_q=="TRUE") %>% droplevels()
+
+gcta_naeuSNP = read.table("gcta_50miss_perrange/gcta_all_1000-1000_top99_allwinds_SNPinfoNAEU", header=T) 
+gcta_naeu = read.table("gcta_50miss_perrange/gcta_all_1000-1000_top99_allwindsNAEU", header=T) 
+gcta_supnaeu = read.table("gcta_50miss_perrange/gcta_1000_top99_supwindNAEU", header=T)
+gcta_naeu$windID = paste0(gcta_naeu$contig,"__",gcta_naeu$win.start)
+gcta_supnaeu$windID = paste0(gcta_supnaeu$contig,"__",gcta_supnaeu$win.start)
+
+bfn_sup = read.table("bf_1000_99_allwind/mbf_1000_99_binnullW.txt", header=T)
+bfxtx_sup = read.table("xtx_1000_99_allwind/mxtx_1000_99_binnullW.txt", header=T)
+
+bfn_sup_NA = bfn_sup %>% filter(qbinom=="yes" & Range=="nat") %>% droplevels()
+bfn_sup_EU = bfn_sup %>% filter(qbinom=="yes" & Range=="EU") %>% droplevels()
+bfn_sup_AU = bfn_sup %>% filter(qbinom=="yes" & Range=="AU") %>% droplevels()
+
+bfnw_sup_NA = bfn_sup %>% filter(null.W=="yes" & Range=="nat") %>% droplevels()
+bfnw_sup_EU = bfn_sup %>% filter(null.W=="yes"& Range=="EU") %>% droplevels()
+bfnw_sup_AU = bfn_sup %>% filter(null.W=="yes"& Range=="AU") %>% droplevels()
+
+xn_sup_NA = bfxtx_sup %>% filter(binnullw=="yes" & Range=="nat") %>% droplevels()
+xn_sup_EU = bfxtx_sup %>% filter(binnullw=="yes" & Range=="EU") %>% droplevels()
+xn_sup_AU = bfxtx_sup %>% filter(binnullw=="yes" & Range=="AU") %>% droplevels()
+```
+
+Window has to have hit in at least 2 methods within a range (based on binom AND nullw)
+---
+```{r}
+bfn_sup_NAall = as.data.frame(levels(as.factor(bfn_sup_NA$windID)))
+colnames(bfn_sup_NAall) = "windID"
+bfxtx_sup_NA = inner_join(xn_sup_NA, bfn_sup_NAall, by="windID")
+bfn_sup_EUall = as.data.frame(levels(as.factor(bfn_sup_EU$windID)))
+colnames(bfn_sup_EUall) = "windID"
+bfxtx_sup_EU = inner_join(xn_sup_EU, bfn_sup_EUall, by="windID")
+bfn_sup_AUall = as.data.frame(levels(as.factor(bfn_sup_AU$windID)))
+colnames(bfn_sup_AUall) = "windID"
+bfxtx_sup_AU = inner_join(xn_sup_AU, bfn_sup_AUall, by="windID")
+bfwtx_sup_NAEU = full_join(bfxtx_sup_NA[,c(1,5)], bfxtx_sup_EU[,c(1,5)], by="windID")
+bfxtx_sup_NAEU = full_join(bfxtx_sup_NA[,c(1,5)], bfxtx_sup_EU[,c(1,5)], by="windID")
+bfxtx_sup_NAEUAU = full_join(bfxtx_sup_AU[,c(1,5)], bfxtx_sup_NAEU, by="windID")
+
+#with null-w results
+bfnw_sup_NAall = as.data.frame(levels(as.factor(bfnw_sup_NA$windID)))
+colnames(bfnw_sup_NAall) = "windID"
+bfwxtx_sup_NA = inner_join(xn_sup_NA, bfnw_sup_NAall, by="windID")
+bfnw_sup_EUall = as.data.frame(levels(as.factor(bfnw_sup_EU$windID)))
+colnames(bfnw_sup_EUall) = "windID"
+bfwxtx_sup_EU = inner_join(xn_sup_EU, bfnw_sup_EUall, by="windID")
+bfnw_sup_AUall = as.data.frame(levels(as.factor(bfnw_sup_AU$windID)))
+colnames(bfnw_sup_AUall) = "windID"
+bfwxtx_sup_AU = inner_join(xn_sup_AU, bfnw_sup_AUall, by="windID")
+
+bfwxtx_sup_NAEU = full_join(bfwxtx_sup_NA[,c(1,5)], bfwxtx_sup_EU[,c(1,5)], by="windID")
+bfwxtx_sup_NAEUAU = full_join(bfwxtx_sup_AU[,c(1,5)], bfwxtx_sup_NAEU, by="windID")
+
+write.table(bfwxtx_sup_NAEUAU, "XTXGEA_NAEUAU")
+
+bfgcta_sup_NA = inner_join(gcta_supnaeu, bfn_sup_NAall, by="windID")
+bfgcta_sup_EU = inner_join(gcta_supnaeu, bfn_sup_EUall, by="windID")
+bfgcta_sup_AU = inner_join(gcta_supnaeu, bfn_sup_AUall, by="windID")
+
+bfwgcta_sup_NA = inner_join(gcta_supnaeu, bfnw_sup_NAall, by="windID")
+bfwgcta_sup_EU = inner_join(gcta_supnaeu, bfnw_sup_EUall, by="windID")
+bfwgcta_sup_AU = inner_join(gcta_supnaeu, bfnw_sup_AUall, by="windID")
+
+xgcta_sup_NA = inner_join(gcta_supnaeu, xn_sup_NA, by="windID")
+xgcta_sup_EU = inner_join(gcta_supnaeu, xn_sup_EU, by="windID")
+xgcta_sup_AU = inner_join(gcta_supnaeu, xn_sup_AU, by="windID")
+bfxtxgcta_sup_NA = dplyr::select(inner_join(bfxtx_sup_NA, gcta_supnaeu, by="windID"), windID) 
+bfxtxgcta_sup_EU = dplyr::select(inner_join(bfxtx_sup_EU, gcta_supnaeu, by="windID"), windID)
+bfxtxgcta_sup_AU = dplyr::select(inner_join(bfxtx_sup_AU, gcta_supnaeu, by="windID"), windID)
+
+bfwxtxgcta_sup_NA = dplyr::select(inner_join(bfwxtx_sup_NA, gcta_supnaeu, by="windID"), windID) 
+bfwxtxgcta_sup_EU = dplyr::select(inner_join(bfwxtx_sup_EU, gcta_supnaeu, by="windID"), windID)
+bfwxtxgcta_sup_AU = dplyr::select(inner_join(bfwxtx_sup_AU, gcta_supnaeu, by="windID"), windID)
+```
+
+```{r}
+bf_sup_NA = dplyr::select(bfn_sup_NA, windID, env)
+bf_sup_EU = dplyr::select(bfn_sup_EU, windID, env)
+bf_sup_AU = dplyr::select(bfn_sup_AU, windID, env)
+
+bf_gcta_NA = full_join(bf_sup_NA,gcta_supnaeu , by="windID")
+bf_gcta_NA1 = bf_gcta_NA[!is.na(bf_gcta_NA$env),]
+bf_gcta_NA2= bf_gcta_NA1[!is.na(bf_gcta_NA1$phen),]
+
+bf_gcta_EU = full_join(bf_sup_EU,gcta_supnaeu , by="windID")
+bf_gcta_EU1 = bf_gcta_EU[!is.na(bf_gcta_EU$env),]
+bf_gcta_EU2= bf_gcta_EU1[!is.na(bf_gcta_EU1$phen),]
+
+bf_gcta_AU = full_join(bf_sup_AU,gcta_supnaeu , by="windID")
+bf_gcta_AU1 = bf_gcta_AU[!is.na(bf_gcta_AU$env),]
+bf_gcta_AU2= bf_gcta_AU1[!is.na(bf_gcta_AU1$phen),]
+
+write.table(bf_gcta_NA2, "bfgctaNAoverlap_NAEU")
+write.table(bf_gcta_EU2, "bfgctaEUoverlap_NAEU")
+write.table(bf_gcta_AU2, "bfgctaAUoverlap_NAEU")
+
+#with null-W results
+bfw_sup_NA = dplyr::select(bfnw_sup_NA, windID, env)
+bfw_sup_EU = dplyr::select(bfnw_sup_EU, windID, env)
+bfw_sup_AU = dplyr::select(bfnw_sup_AU, windID, env)
+
+bfw_gcta_NA = full_join(bfw_sup_NA,gcta_supnaeu , by="windID")
+bfw_gcta_NA1 = bfw_gcta_NA[!is.na(bfw_gcta_NA$env),]
+bfw_gcta_NA2= bfw_gcta_NA1[!is.na(bfw_gcta_NA1$phen),]
+
+bfw_gcta_EU = full_join(bfw_sup_EU,gcta_supnaeu , by="windID")
+bfw_gcta_EU1 = bfw_gcta_EU[!is.na(bfw_gcta_EU$env),]
+bfw_gcta_EU2= bfw_gcta_EU1[!is.na(bfw_gcta_EU1$phen),]
+
+bfw_gcta_AU = full_join(bfw_sup_AU,gcta_supnaeu , by="windID")
+bfw_gcta_AU1 = bfw_gcta_AU[!is.na(bfw_gcta_AU$env),]
+bfw_gcta_AU2= bfw_gcta_AU1[!is.na(bfw_gcta_AU1$phen),]
+
+write.table(bfw_gcta_NA2, "bfwgctaNAoverlap_NAEU")
+write.table(bfw_gcta_EU2, "bfwgctaEUoverlap_NAEU")
+write.table(bfw_gcta_AU2, "bfwgctaAUoverlap_NAEU")
+
+#which bf-gcta outliers are found in multiple ranges
+intersect(bfw_gcta_NA2[,c(1:3)], bfw_gcta_EU2[,c(1:3)])
+intersect(bfw_gcta_NA2[,c(1:3)], bfw_gcta_AU2[,c(1:3)])
+intersect(bfw_gcta_EU2[,c(1:3)], bfw_gcta_AU2[,c(1:3)])
+
+intersect(intersect(bfw_gcta_NA2[,c(1:3)], bfw_gcta_EU2[,c(1:3)]), bfw_gcta_AU2[,c(1:3)])
+
+```
+
+
+Test overlap between ranges of outliers in >1 method compared to hypergeometric distribution
+---
+
+with nullw
+
+```{r}
+# phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where
+  # q=size of outlier overlap-1; 
+  # m=number of outlier windows range#1; 
+  # n=(total number shared windows-m); 
+  # k=number of outlier windows range#2.
+
+#XTX-GEA
+phyper(length(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_EU$windID))-1, 
+       length(levels(as.factor(bfwxtx_sup_NA$windID))), 
+       length(intersect(xwind_na$windID,xwind_eu$windID)) - length(levels(as.factor(bfwxtx_sup_NA$windID))),
+       length(levels(as.factor(bfwxtx_sup_EU$windID))),
+       lower.tail = F, log.p = FALSE) #bfwxtx_NAEU
+
+phyper(length(intersect(bfwxtx_sup_EU$windID,bfwxtx_sup_AU$windID))-1, 
+       length(levels(as.factor(bfwxtx_sup_EU$windID))), 
+       length(intersect(xwind_eu$windID,xwind_au$windID)) - length(levels(as.factor(bfwxtx_sup_EU$windID))),
+       length(levels(as.factor(bfwxtx_sup_AU$windID))), 
+       lower.tail = F, log.p = FALSE) #bfwxtx_EUAU
+
+phyper(length(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_AU$windID))-1,
+       length(levels(as.factor(bfwxtx_sup_NA$windID))),  
+       length(intersect(xwind_na$windID,xwind_au$windID)) - length(levels(as.factor(bfwxtx_sup_NA$windID))),
+       length(levels(as.factor(bfwxtx_sup_AU$windID))), 
+       lower.tail = F, log.p = FALSE) #bfwxtx_NAAU
+
+# phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where
+  # q=size of outlier overlap-1; 
+  # m=number of outlier windows range#1; 
+  # n=(total number shared windows-m); 
+  # k=number of outlier windows range#2
+
+#GEA-GPA
+phyper(length(intersect(bfwgcta_sup_NA$windID,bfwgcta_sup_EU$windID))-1, 
+       length(levels(as.factor(bfwgcta_sup_NA$windID))),
+       length(intersect(intersect(wind_na$windID,gcta_naeu$windID),wind_eu$windID)) -
+         length(levels(as.factor(bfwgcta_sup_NA$windID))), 
+       length(levels(as.factor(bfwgcta_sup_EU$windID))), lower.tail = F, log.p = FALSE) 
+
+phyper(length(intersect(bfwgcta_sup_EU$windID,bfwgcta_sup_AU$windID))-1, 
+       length(levels(as.factor(bfwgcta_sup_EU$windID))), 
+       length(intersect(intersect(gcta_naeu$windID,wind_au$windID),wind_eu$windID))  -
+         length(levels(as.factor(bfwgcta_sup_EU$windID))),
+       length(levels(as.factor(bfwgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_EUAU
+
+phyper(length(intersect(bfwgcta_sup_NA$windID,bfwgcta_sup_AU$windID))-1, 
+       length(levels(as.factor(bfwgcta_sup_NA$windID))), 
+       length(intersect(intersect(gcta_naeu$windID,wind_au$windID),wind_na$windID)) -
+         length(levels(as.factor(bfwgcta_sup_NA$windID))),
+       length(levels(as.factor(bfwgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_NAAU
+
+#XTX-GPA
+phyper(length(intersect(xgcta_sup_NA$windID,xgcta_sup_EU$windID))-1, 
+       length(levels(as.factor(xgcta_sup_NA$windID))),
+       length(intersect(intersect(xwind_na$windID,gcta_naeu$windID),xwind_eu$windID)) -
+         length(levels(as.factor(xgcta_sup_NA$windID))), 
+       length(levels(as.factor(xgcta_sup_EU$windID))), lower.tail = F, log.p = FALSE) 
+
+phyper(length(intersect(xgcta_sup_EU$windID,xgcta_sup_AU$windID))-1, 
+       length(levels(as.factor(xgcta_sup_EU$windID))), 
+       length(intersect(intersect(gcta_naeu$windID,xwind_au$windID),xwind_eu$windID))  -
+         length(levels(as.factor(xgcta_sup_EU$windID))), 
+       length(levels(as.factor(xgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_EUAU
+
+phyper(length(intersect(xgcta_sup_NA$windID,xgcta_sup_AU$windID))-1, 
+       length(levels(as.factor(xgcta_sup_NA$windID))), 
+       length(intersect(intersect(gcta_naeu$windID,xwind_au$windID),xwind_na$windID)) -
+         length(levels(as.factor(xgcta_sup_NA$windID))),
+       length(levels(as.factor(xgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_NAAU
+
+#all
+phyper(length(intersect(bfwxtxgcta_sup_NA$windID,bfwxtxgcta_sup_EU$windID))-1,
+       length(levels(as.factor(bfwxtxgcta_sup_NA$windID))),
+       length(intersect(intersect(xwind_na$windID,gcta_naeu$windID),xwind_eu$windID)) -
+         length(levels(as.factor(bfwxtxgcta_sup_NA$windID))), 
+       length(levels(as.factor(bfwxtxgcta_sup_EU$windID))), lower.tail = F, log.p = FALSE) 
+
+phyper(length(intersect(bfwxtxgcta_sup_EU$windID,bfwxtxgcta_sup_AU$windID))-1,
+       length(levels(as.factor(bfwxtxgcta_sup_EU$windID))), 
+       length(intersect(intersect(gcta_naeu$windID,xwind_au$windID),xwind_eu$windID))  -
+         length(levels(as.factor(bfwxtxgcta_sup_EU$windID))), length(levels(as.factor(bfwxtxgcta_sup_AU$windID))),
+       lower.tail = F, log.p = FALSE) #xgcta_EUAU
+
+phyper(length(intersect(bfwxtxgcta_sup_NA$windID,bfwxtxgcta_sup_AU$windID))-1,
+       length(levels(as.factor(bfwxtxgcta_sup_NA$windID))), 
+       length(intersect(intersect(gcta_naeu$windID,xwind_au$windID),xwind_na$windID)) -
+         length(levels(as.factor(bfwxtxgcta_sup_NA$windID))), 
+       length(levels(as.factor(bfwxtxgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_NAAU
+
+t = read.table("tst.txt")
+p.adjust(t$V1  , method = 'fdr')
+```
+
+
+Plots with nullw
+---
+```{r}
+#eaa-xtx
+area1 = length(levels(as.factor(bfwxtx_sup_NA$windID)))
+area2= length(levels(as.factor(bfwxtx_sup_EU$windID)))
+area3= length(levels(as.factor(bfwxtx_sup_AU$windID)))
+n12 = length(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_EU$windID))
+n23 = length(intersect(bfwxtx_sup_EU$windID,bfwxtx_sup_AU$windID))
+n13 = length(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_AU$windID))
+n123 = length(intersect(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_EU$windID), bfwxtx_sup_AU$windID))
+pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/venn_bfwxtx.pdf")
+draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
+alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
+cat.pos = 0, cat.dist = 0.07,margin = 0.2)
+dev.off()
+
+```
+
+other plot
+```{r}
+##ALl windows EAA (repeat among env)
+area1 = length(levels(as.factor(bfna$windIDenv)))
+area2= length(levels(as.factor(bfeu$windIDenv)))
+area3= length(levels(as.factor(bfau$windIDenv)))
+n12 = length(intersect(bfna$windIDenv,bfeu$windIDenv))
+n23 = length(intersect(bfeu$windIDenv,bfau$windIDenv))
+n13 = length(intersect(bfna$windIDenv,bfau$windIDenv))
+n123 = length(intersect(intersect(bfna$windIDenv,bfeu$windIDenv), bfau$windIDenv))
+
+draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
+alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
+cat.pos = 0, cat.dist = 0.07, rotation.degree = 270,margin = 0.2)
+
+##ALl windows EAA (no repeat among env)
+area1 = length(levels(as.factor(bfna$windID)))
+area2= length(levels(as.factor(bfeu$windID)))
+area3= length(levels(as.factor(bfau$windID)))
+n12 = length(intersect(levels(as.factor(bfna$windID)),levels(as.factor(bfeu$windID))))
+n23 =  length(intersect(levels(as.factor(bfeu$windID)),levels(as.factor(bfau$windID))))
+n13 = length(intersect(levels(as.factor(bfna$windID)),levels(as.factor(bfau$windID))))
+n123 = length(intersect(intersect(levels(as.factor(bfna$windID)),levels(as.factor(bfeu$windID))), levels(as.factor(bfau$windID))))
+
+draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
+alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
+cat.pos = 0, cat.dist = 0.07, rotation.degree = 270,
+margin = 0.2)
+```
+
+*top env and traits*
+---
+```{r}
+bfn_sup_NA = bfn_sup %>% filter(binnullw=="yes" & Range=="nat") %>% droplevels()
+bfn_sup_EU = bfn_sup %>% filter(binnullw=="yes" & Range=="EU") %>% droplevels()
+bfn_sup_AU = bfn_sup %>% filter(binnullw=="yes" & Range=="AU") %>% droplevels()
+
+sup_env_NA = bfn_sup_NA %>% filter(env=="Latitude" | 
+                                    env=="Longitude" |
+                                      env=="bio1" |
+                                      env=="bio2" | 
+                                      env=="bio5" |
+                                      env=="bio10" |
+                                      env=="bio11") %>% droplevels()
+
+
+sup_env_EU = bfn_sup_EU %>% filter(env=="Latitude" | 
+                                    env=="Longitude" |
+                                      env=="bio1" |
+                                      env=="bio2" | 
+                                      env=="bio5" |
+                                      env=="bio10" |
+                                      env=="bio11") %>% droplevels()
+
+
+sup_env_AU = bfn_sup_AU %>% filter(env=="Latitude" | 
+                                    env=="Longitude" |
+                                      env=="bio1" |
+                                      env=="bio2" | 
+                                      env=="bio5" |
+                                      env=="bio10" |
+                                      env=="bio11") %>% droplevels()
+
+
+sup_gwas = gcta_supnaeu %>% filter(phen=="maxheight" | 
+                                      phen=="totwt" | 
+                                      phen=="branches" |
+                                      phen=="inflx" |
+                                      phen=="flstart" |
+                                      phen=="malewt" |
+                                      phen=="dich" |
+                                      phen=="sexrat"
+                                     ) %>% droplevels()
+
+wind_na_sub = wind_na %>% filter(envvar=="Latitude_all" | 
+                                      envvar=="Longitude_all" | 
+                                      envvar=="bio1_all" |
+                                    envvar=="bio2_all" |
+                                      envvar=="bio5_all" |
+                                      envvar=="bio10_all" |
+                                     envvar=="bio11_all"
+                                     ) %>% droplevels()
+
+wind_eu_sub = wind_eu %>% filter(envvar=="Latitude_all" | 
+                                      envvar=="Longitude_all" | 
+                                      envvar=="bio1_all" |
+                                    envvar=="bio2_all" |
+                                      envvar=="bio5_all" |
+                                      envvar=="bio10_all" |
+                                     envvar=="bio11_all"
+                                     ) %>% droplevels()
+
+wind_au_sub = wind_au %>% filter(envvar=="Latitude_all" | 
+                                      envvar=="Longitude_all" | 
+                                      envvar=="bio1_all" |
+                                    envvar=="bio2_all" |
+                                      envvar=="bio5_all" |
+                                      envvar=="bio10_all" |
+                                     envvar=="bio11_all"
+                                     ) %>% droplevels()
+
+gcta_naeu_sub =gcta_naeu %>% filter(phen=="maxheight" | 
+                                      phen=="totwt" | 
+                                      phen=="branches" |
+                                      phen=="inflx" |
+                                      phen=="flstart" |
+                                      phen=="malewt" |
+                                      phen=="dich" |
+                                      phen=="sexrat"
+                                     ) %>% droplevels()
+```
+
+```{r}
+bf_sup_NA = dplyr::select(sup_env_NA, windID, env)
+bf_sup_EU = dplyr::select(sup_env_EU, windID, env)
+bf_sup_AU = dplyr::select(sup_env_AU, windID, env)
+
+bfx_sup_NA = inner_join(bf_sup_NA, xn_sup_NA, by="windID") #note this is more than in the venn below as a window can here be associated with more environments
+bfx_sup_EU = inner_join(bf_sup_EU, xn_sup_EU, by="windID") #note this is more than in the venn below as a window can here be associated with more environments
+bfx_sup_AU = inner_join(bf_sup_AU, xn_sup_AU, by="windID") #note this is more than in the venn below as a window can here be associated with more environments
+
+bfx_sup_NAEU = full_join(bfx_sup_NA[c(1:2)], bfx_sup_EU[c(1:2)], by="windID")
+bfx_sup_NAEU1 = bfx_sup_NAEU[!is.na(bfx_sup_NAEU$env.x),]
+bfx_sup_NAEU2= bfx_sup_NAEU1[!is.na(bfx_sup_NAEU1$env.y),]
+plot(bfx_sup_NAEU2$env.x~bfx_sup_NAEU2$env.y)#are the outliers identified with same env?
+
+bf_gcta_NA = full_join(bf_sup_NA,sup_gwas , by="windID")
+bf_gcta_NA1 = bf_gcta_NA[!is.na(bf_gcta_NA$env),]
+bf_gcta_NA2= bf_gcta_NA1[!is.na(bf_gcta_NA1$phen),]
+
+bf_gcta_EU = full_join(bf_sup_EU,sup_gwas , by="windID")
+bf_gcta_EU1 = bf_gcta_EU[!is.na(bf_gcta_EU$env),]
+bf_gcta_EU2= bf_gcta_EU1[!is.na(bf_gcta_EU1$phen),]
+
+bf_gcta_AU = full_join(bf_sup_AU,sup_gwas , by="windID")
+bf_gcta_AU1 = bf_gcta_AU[!is.na(bf_gcta_AU$env),]
+bf_gcta_AU2= bf_gcta_AU1[!is.na(bf_gcta_AU1$phen),]
+
+write.table(bf_gcta_NA2, "geagpapea_na")
+write.table(bf_gcta_EU2, "geagpapea_eu")
+write.table(bf_gcta_AU2, "geagpapea_au")
+
+geagpapea_na = read.table("geagpapea_na", header = T)
+geagpapea_eu = read.table("geagpapea_eu", header = T)
+geagpapea_au = read.table("geagpapea_au", header = T)
+
+#which bf-gcta outliers are found in multiple ranges
+intersect(bf_gcta_NA2$windID, bf_gcta_EU2$windID)
+intersect(bf_gcta_NA2$windID, bf_gcta_AU2$windID)
+intersect(bf_gcta_EU2$windID, bf_gcta_AU2$windID)
+
+intersect(intersect(bf_gcta_NA2[,c(1:3)], bf_gcta_EU2[,c(1:3)]), bf_gcta_AU2[,c(1:3)])
+
+```
+
+
+```{r}
+#with null-w results
+bfnw_sup_NAall = as.data.frame(levels(as.factor(sup_env_NA$windID)))
+colnames(bfnw_sup_NAall) = "windID"
+bfwxtx_sup_NA = inner_join(xn_sup_NA, bfnw_sup_NAall, by="windID")
+bfnw_sup_EUall = as.data.frame(levels(as.factor(sup_env_EU$windID)))
+colnames(bfnw_sup_EUall) = "windID"
+bfwxtx_sup_EU = inner_join(xn_sup_EU, bfnw_sup_EUall, by="windID")
+bfnw_sup_AUall = as.data.frame(levels(as.factor(sup_env_AU$windID)))
+colnames(bfnw_sup_AUall) = "windID"
+bfwxtx_sup_AU = inner_join(xn_sup_AU, bfnw_sup_AUall, by="windID")
+
+bfwxtx_sup_NAEU = full_join(bfwxtx_sup_NA[,c(1,5)], bfwxtx_sup_EU[,c(1,5)], by="windID")
+bfwxtx_sup_NAEUAU = full_join(bfwxtx_sup_AU[,c(1,5)], bfwxtx_sup_NAEU, by="windID")
+
+write.table(bfwxtx_sup_NAEUAU, "PEAXTXGEA_NAEUAU")
+
+bfwgcta_sup_NA = inner_join(sup_gwas, bfnw_sup_NAall, by="windID")
+bfwgcta_sup_EU = inner_join(sup_gwas, bfnw_sup_EUall, by="windID")
+bfwgcta_sup_AU = inner_join(sup_gwas, bfnw_sup_AUall, by="windID")
+
+xgcta_sup_NA = inner_join(sup_gwas, xn_sup_NA, by="windID")
+xgcta_sup_EU = inner_join(sup_gwas, xn_sup_EU, by="windID")
+xgcta_sup_AU = inner_join(sup_gwas, xn_sup_AU, by="windID")
+
+bfwxtxgcta_sup_NA = dplyr::select(inner_join(bfwxtx_sup_NA, sup_gwas, by="windID"), windID) 
+bfwxtxgcta_sup_EU = dplyr::select(inner_join(bfwxtx_sup_EU, sup_gwas, by="windID"), windID)
+bfwxtxgcta_sup_AU = dplyr::select(inner_join(bfwxtx_sup_AU, sup_gwas, by="windID"), windID)
+```
+
+Test overlap between ranges of outliers in >1 method compared to hypergeometric distribution
+---
+
+with nullw
+
+```{r}
+# phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where
+  # q=size of outlier overlap-1; 
+  # m=number of outlier windows range#1; 
+  # n=(total number shared windows-m); 
+  # k=number of outlier windows range#2.
+
+#XTX-GEA
+phyper(length(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_EU$windID))-1, 
+       length(levels(as.factor(bfwxtx_sup_NA$windID))), 
+       length(intersect(wind_na_sub$windID,wind_eu_sub$windID)) - length(levels(as.factor(bfwxtx_sup_NA$windID))),
+       length(levels(as.factor(bfwxtx_sup_EU$windID))),
+       lower.tail = F, log.p = FALSE) #bfwxtx_NAEU
+
+phyper(length(intersect(bfwxtx_sup_EU$windID,bfwxtx_sup_AU$windID))-1, 
+       length(levels(as.factor(bfwxtx_sup_EU$windID))), 
+       length(intersect(wind_eu_sub$windID,wind_au_sub$windID)) - length(levels(as.factor(bfwxtx_sup_EU$windID))),
+       length(levels(as.factor(bfwxtx_sup_AU$windID))), 
+       lower.tail = F, log.p = FALSE) #bfwxtx_EUAU
+
+phyper(length(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_AU$windID))-1,
+       length(levels(as.factor(bfwxtx_sup_NA$windID))),  
+       length(intersect(wind_na_sub$windID,wind_au_sub$windID)) - length(levels(as.factor(bfwxtx_sup_NA$windID))),
+       length(levels(as.factor(bfwxtx_sup_AU$windID))), 
+       lower.tail = F, log.p = FALSE) #bfwxtx_NAAU
+
+# phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where
+  # q=size of outlier overlap-1; 
+  # m=number of outlier windows range#1; 
+  # n=(total number shared windows-m); 
+  # k=number of outlier windows range#2
+
+#GEA-GPA
+phyper(length(intersect(bfwgcta_sup_NA$windID,bfwgcta_sup_EU$windID))-1, 
+       length(levels(as.factor(bfwgcta_sup_NA$windID))),
+       length(intersect(intersect(wind_na_sub$windID,gcta_naeu_sub$windID),wind_eu_sub$windID)) -
+         length(levels(as.factor(bfwgcta_sup_NA$windID))), 
+       length(levels(as.factor(bfwgcta_sup_EU$windID))), lower.tail = F, log.p = FALSE) 
+
+phyper(length(intersect(bfwgcta_sup_EU$windID,bfwgcta_sup_AU$windID))-1, 
+       length(levels(as.factor(bfwgcta_sup_EU$windID))), 
+       length(intersect(intersect(gcta_naeu_sub$windID,wind_au_sub$windID),wind_eu_sub$windID))  -
+         length(levels(as.factor(bfwgcta_sup_EU$windID))),
+       length(levels(as.factor(bfwgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_EUAU
+
+phyper(length(intersect(bfwgcta_sup_NA$windID,bfwgcta_sup_AU$windID))-1, 
+       length(levels(as.factor(bfwgcta_sup_NA$windID))), 
+       length(intersect(intersect(gcta_naeu_sub$windID,wind_eu_sub$windID),wind_na_sub$windID)) -
+         length(levels(as.factor(bfwgcta_sup_NA$windID))),
+       length(levels(as.factor(bfwgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_NAAU
+
+#XTX-GPA
+phyper(length(intersect(xgcta_sup_NA$windID,xgcta_sup_EU$windID))-1, 
+       length(levels(as.factor(xgcta_sup_NA$windID))),
+       length(intersect(intersect(xwind_na$windID,gcta_naeu_sub$windID),xwind_eu$windID)) -
+         length(levels(as.factor(xgcta_sup_NA$windID))), 
+       length(levels(as.factor(xgcta_sup_EU$windID))), lower.tail = F, log.p = FALSE) 
+
+phyper(length(intersect(xgcta_sup_EU$windID,xgcta_sup_AU$windID))-1, 
+       length(levels(as.factor(xgcta_sup_EU$windID))), 
+       length(intersect(intersect(gcta_naeu_sub$windID,xwind_au$windID),xwind_eu$windID))  -
+         length(levels(as.factor(xgcta_sup_EU$windID))), 
+       length(levels(as.factor(xgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_EUAU
+
+phyper(length(intersect(xgcta_sup_NA$windID,xgcta_sup_AU$windID))-1, 
+       length(levels(as.factor(xgcta_sup_NA$windID))), 
+       length(intersect(intersect(gcta_naeu_sub$windID,xwind_au$windID),xwind_na$windID)) -
+         length(levels(as.factor(xgcta_sup_NA$windID))),
+       length(levels(as.factor(xgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_NAAU
+
+#all
+phyper(length(intersect(bfwxtxgcta_sup_NA$windID,bfwxtxgcta_sup_EU$windID))-1,
+       length(levels(as.factor(bfwxtxgcta_sup_NA$windID))),
+       length(intersect(intersect(wind_na_sub$windID,gcta_naeu_sub$windID),wind_eu_sub$windID)) -
+         length(levels(as.factor(bfwxtxgcta_sup_NA$windID))), 
+       length(levels(as.factor(bfwxtxgcta_sup_EU$windID))), lower.tail = F, log.p = FALSE) 
+
+phyper(length(intersect(bfwxtxgcta_sup_EU$windID,bfwxtxgcta_sup_AU$windID))-1,
+       length(levels(as.factor(bfwxtxgcta_sup_EU$windID))), 
+       length(intersect(intersect(gcta_naeu_sub$windID,wind_au_sub$windID),wind_eu_sub$windID))  -
+         length(levels(as.factor(bfwxtxgcta_sup_EU$windID))), length(levels(as.factor(bfwxtxgcta_sup_AU$windID))),
+       lower.tail = F, log.p = FALSE) #xgcta_EUAU
+
+phyper(length(intersect(bfwxtxgcta_sup_NA$windID,bfwxtxgcta_sup_AU$windID))-1,
+       length(levels(as.factor(bfwxtxgcta_sup_NA$windID))), 
+       length(intersect(intersect(gcta_naeu_sub$windID,wind_au_sub$windID),wind_na_sub$windID)) -
+         length(levels(as.factor(bfwxtxgcta_sup_NA$windID))), 
+       length(levels(as.factor(bfwxtxgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_NAAU
+
+t = read.table("tst.txt")
+p.adjust(t$V1  , method = 'fdr')
+```
+
+
+Plots with nullw
+---
+```{r}
+#eaa-xtx
+area1 = length(levels(as.factor(bfwxtx_sup_NA$windID)))
+area2= length(levels(as.factor(bfwxtx_sup_EU$windID)))
+area3= length(levels(as.factor(bfwxtx_sup_AU$windID)))
+n12 = length(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_EU$windID))
+n23 = length(intersect(bfwxtx_sup_EU$windID,bfwxtx_sup_AU$windID))
+n13 = length(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_AU$windID))
+n123 = length(intersect(intersect(bfwxtx_sup_NA$windID,bfwxtx_sup_EU$windID), bfwxtx_sup_AU$windID))
+pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/venn_bfwxtx_TE.pdf")
+draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
+alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
+cat.pos = 0, cat.dist = 0.07,margin = 0.2)
+dev.off()
+
+```
+
+
+
+
+
+*Extra, environment comparisons*
+===
+1) Test if proportion of outlier windows/all windows is different between ranges for XTX and EAA
+---
+```{r}
+#XTX binomial outlier windows/ total windows
+xpna = length(levels(as.factor(xsupwind_na$windID)))/length(levels(as.factor(xwind_na$windID))) 
+xpeu = length(levels(as.factor(xsupwind_eu$windID)))/length(levels(as.factor(xwind_eu$windID))) 
+xpau = length(levels(as.factor(xsupwind_au$windID)))/length(levels(as.factor(xwind_au$windID))) 
+xpgl = length(levels(as.factor(xsupwind_gl$windID)))/length(levels(as.factor(xwind_gl$windID))) 
+
+#EAA binomial unique (within range) outlier windows / total windows
+bpna = length(levels(as.factor(supwind_na$windID)))/length(levels(as.factor(wind_na$windID))) 
+bpeu = length(levels(as.factor(supwind_eu$windID)))/length(levels(as.factor(wind_eu$windID))) 
+bpau = length(levels(as.factor(supwind_au$windID)))/length(levels(as.factor(wind_au$windID))) 
+bpgl = length(levels(as.factor(supwind_gl$windID)))/length(levels(as.factor(wind_gl$windID))) 
+
+#EAA binomial unique (within range) outlier windows / total outlier windows (replication among env)
+bupna = length(levels(as.factor(supwind_na$windID)))/ length(as.factor(supwind_na$windID))
+bupeu = length(levels(as.factor(supwind_eu$windID)))/ length(as.factor(supwind_eu$windID))
+bupau = length(levels(as.factor(supwind_au$windID)))/ length(as.factor(supwind_au$windID))
+bupgl = length(levels(as.factor(supwind_gl$windID)))/ length(as.factor(supwind_gl$windID))
+
+#pairwise range test XTX binomial outlier windows/ total windows
+ptx_naeu = prop.test(x= c(length(levels(as.factor(xsupwind_na$windID))),length(levels(as.factor(xsupwind_eu$windID)))), n= c(length(levels(as.factor(xwind_na$windID))) ,length(levels(as.factor(xwind_eu$windID)))))
+ptx_naau = prop.test(x= c(length(levels(as.factor(xsupwind_na$windID))),length(levels(as.factor(xsupwind_au$windID)))), n= c(length(levels(as.factor(xwind_na$windID))) ,length(levels(as.factor(xwind_au$windID)))))
+ptx_euau = prop.test(x= c(length(levels(as.factor(xsupwind_eu$windID))),length(levels(as.factor(xsupwind_au$windID)))), n= c(length(levels(as.factor(xwind_eu$windID))) ,length(levels(as.factor(xwind_au$windID)))))
+
+ptx_q = p.adjust(c(ptx_naeu$p.value,  ptx_naau$p.value,  ptx_euau$p.value), method='fdr')
+
+#pairwise range test  EAA binomial unique (within range) outlier windows / total windows
+ptb_naeu = prop.test(x= c(length(levels(as.factor(supwind_na$windID))),length(levels(as.factor(supwind_eu$windID)))), n= c(length(levels(as.factor(wind_na$windID))),length(levels(as.factor(wind_eu$windID)))))
+ptb_naau = prop.test(x= c(length(levels(as.factor(supwind_na$windID))),length(levels(as.factor(supwind_au$windID)))), n= c(length(levels(as.factor(wind_na$windID))),length(levels(as.factor(wind_au$windID)))))
+ptb_euau = prop.test(x= c(length(levels(as.factor(supwind_eu$windID))),length(levels(as.factor(supwind_au$windID)))), n= c(length(levels(as.factor(wind_eu$windID))),length(levels(as.factor(wind_au$windID)))))
+
+ptb_q = p.adjust(c(ptb_naeu$p.value,  ptb_naau$p.value,  ptb_euau$p.value), method='fdr')
+
+#pairwise range test EAA binomial unique (within range) outlier windows / total outlier windows (replication among env)
+ptbu_naeu = prop.test(x= c(length(levels(as.factor(supwind_na$windID))),length(levels(as.factor(supwind_eu$windID)))), n= c(length(as.factor(supwind_na$windID)) ,length(as.factor(supwind_eu$windID))))
+ptbu_naau = prop.test(x= c(length(levels(as.factor(supwind_na$windID))),length(levels(as.factor(supwind_au$windID)))), n= c(length(as.factor(supwind_na$windID)) ,length(as.factor(supwind_au$windID))))
+ptbu_euau = prop.test(x= c(length(levels(as.factor(supwind_eu$windID))),length(levels(as.factor(supwind_au$windID)))), n= c(length(as.factor(supwind_eu$windID)) ,length(as.factor(supwind_au$windID))))
+
+ptbu_q = p.adjust(c(ptbu_naeu$p.value,  ptbu_naau$p.value,  ptbu_euau$p.value), method='fdr')
+
+comp_dat = as.data.frame(matrix(ncol=13, nrow=3, byrow=TRUE,data = c(
+  xpna, xpeu, xpau, xpgl, ptx_naeu$statistic[[1]], ptx_naeu$parameter[[1]], ptx_q[1],ptx_naau$statistic[[1]], ptx_naau$parameter[[1]], ptx_q[2],ptx_euau$statistic[[1]], ptx_euau$parameter[[1]], ptx_q[3],
+  bpna, bpeu, bpau, bpgl, ptb_naeu$statistic[[1]], ptb_naeu$parameter[[1]], ptb_q[1],ptb_naau$statistic[[1]], ptb_naau$parameter[[1]], ptb_q[2],ptb_euau$statistic[[1]], ptb_euau$parameter[[1]], ptb_q[3],
+  bupna, bupeu, bupau, bupgl,  ptbu_naeu$statistic[[1]], ptbu_naeu$parameter[[1]], ptbu_q[1],ptbu_naau$statistic[[1]], ptbu_naau$parameter[[1]], ptbu_q[2],ptbu_euau$statistic[[1]], ptbu_euau$parameter[[1]], ptbu_q[3]
+  )))
+```
+
+
+2) Is the proportion of outliers per environment (out of outlier+non-outlier loci) significantly greater than can be expected from binomial distribution?
+Create table with proportion of outliers per env and expectations for each range
+---
+```{r}
+##Calculate proportion of outlier windows
+GL=data.frame(envvar=as.numeric(), prop=as.numeric())
+for(i in 1:length(levels(envwind_gl$envvar))){
+GL[i,1] =  levels(envwind_gl$envvar)[[i]]
+GL[i,2] =  envwind_gl$n[[i]]/sum(envwind_gl$n) 
+}
+
+NA.=data.frame(envvar=as.numeric(), prop=as.numeric())
+for(i in 1:length(levels(envwind_na$envvar))){
+NA.[i,1] =  levels(envwind_na$envvar)[[i]]
+NA.[i,2] =  envwind_na$n[[i]]/sum(envwind_na$n) 
+}
+
+EU=data.frame(envvar=as.numeric(), prop=as.numeric())
+for(i in 1:length(levels(envwind_eu$envvar))){
+EU[i,1] =  levels(envwind_eu$envvar)[[i]]
+EU[i,2] =  envwind_eu$n[[i]]/sum(envwind_eu$n) 
+}
+
+AU=data.frame(envvar=as.numeric(), prop=as.numeric())
+for(i in 1:length(levels(envwind_au$envvar))){
+AU[i,1] =  levels(envwind_au$envvar)[[i]]
+AU[i,2] =  envwind_au$n[[i]]/sum(envwind_au$n) 
+}
+
+props = combine(GL, NA., EU, AU)
+
+sprops = cbind(NA., EU$prop, AU$prop, GL$prop)
+sprops$envvar <- factor(sprops$envvar, levels = c("Latitude_all", "Longitude_all","alt_all", "bio1_all", "bio2_all", "bio3_all",  "bio4_all", "bio5_all","bio6_all","bio7_all","bio8_all","bio9_all","bio10_all","bio11_all","bio12_all","bio13_all","bio14_all","bio15_all","bio16_all","bio17_all","bio18_all","bio19_all"))
+
+##95% CI (one-sided test)
+#P = 0.05 # see Yeaman et al 2016
+
+ r95gl = data.frame(envvar=as.numeric(), prop=as.numeric(), source= numeric())
+for(i in 1:length(levels(envwind_gl$envvar))){
+r95gl[i,1] =  levels(envwind_gl$envvar)[[i]]
+p = mean(GL$prop)
+r95gl[i,2] =   p + c(qnorm(0.95))*sqrt((1/sum(envwind_gl$n))*p*(1-p))
+r95gl[i,3] = "GL"
+}
+
+r95na = data.frame(envvar=as.numeric(), prop=as.numeric(), source= numeric())
+for(i in 1:length(levels(envwind_na$envvar))){
+r95na[i,1] =  levels(envwind_na$envvar)[[i]]
+p = mean(NA.$prop)
+r95na[i,2] =   p + c(qnorm(0.95))*sqrt((1/sum(envwind_na$n))*p*(1-p))
+r95na[i,3] = "NA."
+}
+
+r95eu = data.frame(envvar=as.numeric(), prop=as.numeric(), source= numeric())
+for(i in 1:length(levels(envwind_eu$envvar))){
+r95eu[i,1] =  levels(envwind_eu$envvar)[[i]]
+p = mean(EU$prop)
+r95eu[i,2] =   p + c(qnorm(0.95))*sqrt((1/sum(envwind_eu$n))*p*(1-p))
+r95eu[i,3] = "EU"
+}
+
+r95au = data.frame(envvar=as.numeric(), prop=as.numeric(), source= numeric())
+for(i in 1:length(levels(envwind_au$envvar))){
+r95au[i,1] =  levels(envwind_au$envvar)[[i]]
+p = mean(AU$prop)
+r95au[i,2] =   p + c(qnorm(0.95))*sqrt((1/sum(envwind_au$n))*p*(1-p))
+r95au[i,3] = "AU"
+}
+
+p95 = rbind(r95gl,r95na, r95eu, r95au)
+allprop95 = combine(props, p95)
+```
+
+Calculate 2-sided CI
+---
+```{r}
+r95gl = data.frame(envvar=as.numeric(), proplow=as.numeric(), propup=as.numeric(), source= numeric())
+for(i in 1:length(levels(envwind_gl$envvar))){
+r95gl[i,1] =  levels(envwind_gl$envvar)[[i]]
+p = 1/22
+r95gl[i,2] =   (p + c(-qnorm(0.975),qnorm(0.975))*sqrt((1/sum(envwind_gl$n))*p*(1-p)))[[1]]
+r95gl[i,3] =   (p + c(-qnorm(0.975),qnorm(0.975))*sqrt((1/sum(envwind_gl$n))*p*(1-p)))[[2]]
+r95gl[i,4] = "GL"
+}
+
+r95na = data.frame(envvar=as.numeric(),  proplow=as.numeric(), propup=as.numeric(), source= numeric())
+for(i in 1:length(levels(envwind_na$envvar))){
+  r95na[i,1] =  levels(envwind_gl$envvar)[[i]]
+
+r95na[i,2] =   (p + c(-qnorm(0.975),qnorm(0.975))*sqrt((1/sum(envwind_na$n))*p*(1-p)))[[1]]
+r95na[i,3] =   (p + c(-qnorm(0.975),qnorm(0.975))*sqrt((1/sum(envwind_na$n))*p*(1-p)))[[2]]
+r95na[i,4] = "NA."
+}
+
+r95eu = data.frame(envvar=as.numeric(),  proplow=as.numeric(), propup=as.numeric(), source= numeric())
+for(i in 1:length(levels(envwind_eu$envvar))){
+  r95eu[i,1] =  levels(envwind_gl$envvar)[[i]]
+  r95eu[i,2] =   (p + c(-qnorm(0.975),qnorm(0.975))*sqrt((1/sum(envwind_eu$n))*p*(1-p)))[[1]]
+r95eu[i,3] =   (p + c(-qnorm(0.975),qnorm(0.975))*sqrt((1/sum(envwind_eu$n))*p*(1-p)))[[2]]
+r95eu[i,4] = "EU"
+}
+
+r95au = data.frame(envvar=as.numeric(),  proplow=as.numeric(), propup=as.numeric(), source= numeric())
+for(i in 1:length(levels(envwind_au$envvar))){
+  r95au[i,1] =  levels(envwind_gl$envvar)[[i]]
+
+  r95au[i,2] =   (p + c(-qnorm(0.975),qnorm(0.975))*sqrt((1/sum(envwind_au$n))*p*(1-p)))[[1]]
+r95au[i,3] =   (p + c(-qnorm(0.975),qnorm(0.975))*sqrt((1/sum(envwind_au$n))*p*(1-p)))[[2]]
+r95au[i,4] = "AU"
+
+}
+
+pci95 = rbind(r95gl,r95na, r95eu, r95au)
+mpci95 = melt(pci95)
+colnames(mpci95)[4] = "prop"
+props$variable = "mean"
+
+allpropci95 = combine(props, mpci95)
+```
+
+Create plot for proportion outliers per env and expectations per range (one-sided CI)
+---
+```{r}
+allprop95$envvar <- factor(allprop95$envvar, levels = c("Latitude_all", "Longitude_all","alt_all", "bio1_all", "bio2_all", "bio3_all",  "bio4_all", "bio5_all","bio6_all","bio7_all","bio8_all","bio9_all","bio10_all","bio11_all","bio12_all","bio13_all","bio14_all","bio15_all","bio16_all","bio17_all","bio18_all","bio19_all"))
+allprop95$source <- factor(allprop95$source, levels = c( "AU","EU", "NA.", "GL" ))
+
+pdf("propoutwind_env_range.pdf", height=3.5, width=7)
+ggplot()+
+  geom_bar(data = allprop95 %>% filter(source.1=="props"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge") +
+  geom_bar(data = allprop95 %>% filter(source.1=="p95"), aes(envvar, prop, fill = source) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")  + theme_bw() 
+dev.off() 
+
+allprop95_sub = allprop95 %>% filter( envvar %in% c("bio1_all","bio2_all", "bio5_all","bio10_all","bio11_all", "Latitude_all", "Longitude_all"))
+
+pdf("propoutwind_env_range_sub.pdf", height=3.5, width=7)
+  ggplot()+
+  geom_bar(data = allprop95_sub %>% filter(source.1=="props"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge") +
+  geom_bar(data = allprop95_sub %>% filter(source.1=="p95"), aes(envvar, prop, fill = source) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")                   + theme_bw()                   
+dev.off()    
+
+
+allprop95_subsub = allprop95 %>% filter(source!="GL"& envvar %in% c("bio1_all","bio2_all", "bio5_all","bio10_all","bio11_all", "Latitude_all", "Longitude_all"))
+
+pdf("propoutwind_env_range_subsub.pdf", height=3.5, width=7)
+  ggplot()+
+  geom_bar(data = allprop95_subsub %>% filter(source.1=="props"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge") +
+  geom_bar(data = allprop95_subsub %>% filter(source.1=="p95"), aes(envvar, prop, fill = source) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black") + theme_bw()                                    
+dev.off()                             
+  
+```
+
+
+Create plot for proportion outliers per env and expectations per range (two-sided CI)
+---
+```{r}
+allpropci95$envvar <- factor(allpropci95$envvar, levels = c("Latitude_all", "Longitude_all","alt_all", "bio1_all", "bio2_all", "bio3_all",  "bio4_all", "bio5_all","bio6_all","bio7_all","bio8_all","bio9_all","bio10_all","bio11_all","bio12_all","bio13_all","bio14_all","bio15_all","bio16_all","bio17_all","bio18_all","bio19_all"))
+allpropci95$source <- factor(allpropci95$source, levels = c( "AU","EU", "NA.", "GL" ))
+
+#pdf("propoutwind_env_range.pdf", height=3.5, width=7)
+ggplot()+
+geom_bar(data = allpropci95 %>% filter(variable=="mean"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge") +  geom_bar(data = allpropci95 %>% filter(variable=="proplow"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+    geom_bar(data = allpropci95 %>% filter(variable=="propup"), aes(envvar, prop, fill = source) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() 
+dev.off() 
+
+allprop95_sub = allpropci95 %>% filter( envvar %in% c("bio1_all","bio2_all", "bio4_all", "bio8_all", "bio12_all","bio15_all","bio17_all", "alt_all", "Latitude_all", "Longitude_all"))
+
+#pdf("propoutwind_env_range_sub.pdf", height=3.5, width=7)
+  ggplot()+
+  geom_bar(data = allprop95_sub %>% filter(source.1=="props"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge") +
+  geom_bar(data = allprop95_sub %>% filter(source.1=="p95"), aes(envvar, prop, fill = source) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")                   + theme_bw()                   
+dev.off()                             
+
+allprop95_subsub = allprop95 %>% filter(source!="GL"& envvar %in% c("bio1_all","bio2_all", "bio5_all", "bio10_all", "bio11_all", "Latitude_all", "Longitude_all"))
+
+pdf("propoutwind_env_range_subsub.pdf", height=3.5, width=7)
+  ggplot()+
+  geom_bar(data = allprop95_subsub %>% filter(source.1=="props"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge") +
+  geom_bar(data = allprop95_subsub %>% filter(source.1=="p95"), aes(envvar, prop, fill = source) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black") + theme_bw()                                    
+dev.off()          
+
+```
+
+Calculating differences in number of outliers for each environment in pair-wise range comparisons
+---
+```{r}
+dat_snp = cbind(envsnp_gl, envsnp_na$n, envsnp_eu$n, envsnp_au$n)
+colnames(dat_snp) = c("env","GL","NA.","EU","AU")
+dat_wind = cbind(envwind_gl, envwind_na$n, envwind_eu$n, envwind_au$n)
+colnames(dat_wind) = c("env","GL","NA.","EU","AU")
+
+res_snpnaeu = data.frame(env=numeric(), chisq=numeric(),  df=numeric(), p=numeric())
+for(i in 1:length(dat_snp$env)){
+  tst = prop.test(x= c(dat_snp$NA.[[i]],dat_snp$EU[[i]]), n=c(sum(dat_snp$NA.),sum(dat_snp$EU)))
+  res_snpnaeu[i,1] = levels(dat_snp$env)[[i]]
+  res_snpnaeu[i,2] = tst$statistic[[1]] #x2 value
+  res_snpnaeu[i,3] = tst$parameter[[1]] #df
+  res_snpnaeu[i,4] = tst$p.value # pval
+}
+res_snpnaeu$q = p.adjust(res_snpnaeu$p, method = 'fdr')
+
+res_snpnaau = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
+for(i in 1:length(dat_snp$env)){
+  tst = prop.test(x= c(dat_snp$NA.[[i]],dat_snp$AU[[i]]), n=c(sum(dat_snp$NA.),sum(dat_snp$AU)))
+  res_snpnaau[i,1] = levels(dat_snp$env)[[i]]
+  res_snpnaau[i,2] = tst$statistic[[1]] #x2 value
+  res_snpnaau[i,3] = tst$parameter[[1]] #df
+  res_snpnaau[i,4] = tst$p.value # pval
+}
+res_snpnaau$q = p.adjust(res_snpnaau$p, method = 'fdr')
+
+res_snpeuau = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
+for(i in 1:length(dat_snp$env)){
+  tst = prop.test(x= c(dat_snp$EU[[i]],dat_snp$AU[[i]]), n=c(sum(dat_snp$EU),sum(dat_snp$AU)))
+  res_snpeuau[i,1] = levels(dat_snp$env)[[i]]
+  res_snpeuau[i,2] = tst$statistic[[1]] #x2 value
+  res_snpeuau[i,3] = tst$parameter[[1]] #df
+  res_snpeuau[i,4] = tst$p.value # pval
+}
+res_snpeuau$q = p.adjust(res_snpeuau$p, method = 'fdr')
+
+envrangecomp = cbind(res_snpnaeu[,c(1:3,5)],res_snpnaau[,c(2:3,5)],res_snpeuau[,c(2:3,5)])
+
+
+res_windnaeu = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
+for(i in 1:length(dat_wind$env)){
+  tst = prop.test(x= c(dat_wind$NA.[[i]],dat_wind$EU[[i]]), n=c(sum(dat_wind$NA.),sum(dat_wind$EU)))
+  res_windnaeu[i,1] = levels(dat_wind$env)[[i]]
+  res_windnaeu[i,2] = tst$statistic[[1]] #x2 value
+  res_windnaeu[i,3] = tst$parameter[[1]] #df
+  res_windnaeu[i,4] = tst$p.value # pval
+}
+res_windnaeu$q = p.adjust(res_windnaeu$p, method = 'fdr')
+
+res_windnaau = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
+for(i in 1:length(dat_wind$env)){
+  tst = prop.test(x= c(dat_wind$NA.[[i]],dat_wind$AU[[i]]), n=c(sum(dat_wind$NA.),sum(dat_wind$AU)))
+  res_windnaau[i,1] = levels(dat_wind$env)[[i]]
+  res_windnaau[i,2] = tst$statistic[[1]] #x2 value
+  res_windnaau[i,3] = tst$parameter[[1]] #df
+  res_windnaau[i,4] = tst$p.value # pval
+}
+res_windnaau$q = p.adjust(res_windnaau$p, method = 'fdr')
+
+res_windeuau = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
+for(i in 1:length(dat_wind$env)){
+  tst = prop.test(x= c(dat_wind$EU[[i]],dat_wind$AU[[i]]), n=c(sum(dat_wind$EU),sum(dat_wind$AU)))
+  res_windeuau[i,1] = levels(dat_wind$env)[[i]]
+  res_windeuau[i,2] = tst$statistic[[1]] #x2 value
+  res_windeuau[i,3] = tst$parameter[[1]] #df
+  res_windeuau[i,4] = tst$p.value # pval
+}
+res_windeuau$q = p.adjust(res_windeuau$p, method = 'fdr')
+
+envrangecompwind= cbind(res_windnaeu[,c(1:3,5)],res_windnaau[,c(2:3,5)],res_windeuau[,c(2:3,5)])
+
+```
+
+Calculate the proportion of unique loci compared to the total number selected by each environment AND test differences between range pairs
+---
+```{r}
+res_snpnaeuau = data.frame(env=numeric(), propNA = numeric(), propEU = numeric(), propAU= numeric(),propGL=numeric(), chisqNAEU=numeric(),  dfNAEU=numeric(), pNAEU=numeric(), qNAEU=numeric(),chisqNAAU=numeric(),  dfNAAU=numeric(), pNAAU=numeric(),qNAAU=numeric(),chisqEUAU=numeric(),  dfEUAU=numeric(), pEUAU=numeric(),qEUAU=numeric() )
+
+for(i in 1:length(levels(supwind_na$envvar))){
+  focal_supwindGL = supwind_gl[which(supwind_gl$envvar==levels(supwind_gl$envvar)[i]),]
+  othersupwindGL = supwind_gl[which(supwind_gl$envvar!=levels(supwind_gl$envvar)[i]),]
+  uniqGL = anti_join(focal_supwindGL, othersupwindGL, by = "windID")
+  focal_supwindNA = supwind_na[which(supwind_na$envvar==levels(supwind_na$envvar)[i]),]
+  othersupwindNA = supwind_na[which(supwind_na$envvar!=levels(supwind_na$envvar)[i]),]
+  uniqNA = anti_join(focal_supwindNA, othersupwindNA, by = "windID")
+  focal_supwindEU = supwind_eu[which(supwind_eu$envvar==levels(supwind_eu$envvar)[i]),]
+  othersupwindEU = supwind_eu[which(supwind_eu$envvar!=levels(supwind_eu$envvar)[i]),]
+  uniqEU = anti_join(focal_supwindEU, othersupwindEU, by = "windID")
+  focal_supwindAU = supwind_au[which(supwind_au$envvar==levels(supwind_au$envvar)[i]),]
+  othersupwindAU = supwind_au[which(supwind_au$envvar!=levels(supwind_au$envvar)[i]),]
+  uniqAU = anti_join(focal_supwindAU, othersupwindAU, by = "windID")
+  
+  res_snpnaeuau[i,1] = levels(supwind_na$envvar)[[i]]
+  res_snpnaeuau[i,2] = nrow(uniqNA)/nrow(focal_supwindNA)
+  res_snpnaeuau[i,3] = nrow(uniqEU)/nrow(focal_supwindEU)
+  res_snpnaeuau[i,4] = nrow(uniqAU)/nrow(focal_supwindAU)
+  res_snpnaeuau[i,5] = nrow(uniqGL)/nrow(focal_supwindGL)
+  
+  #NAEEU
+  if(nrow(uniqEU)>0 & nrow(uniqNA) > 0){ # only calculate if there are unique windows in each range
+  tst = prop.test(x= c(nrow(uniqNA), nrow(uniqEU)), n=c(nrow(focal_supwindNA), nrow(focal_supwindEU)))
+  res_snpnaeuau[i,6] = tst$statistic[[1]] #x2 value
+  res_snpnaeuau[i,7] = tst$parameter[[1]] #df
+  res_snpnaeuau[i,8] = tst$p.value # pval
+  }
+  
+  #NAAU
+  if(nrow(uniqAU)>0 & nrow(uniqNA) > 0){ # only calculate if there are unique windows in each range
+  tst = prop.test(x= c(nrow(uniqNA), nrow(uniqAU)), n=c(nrow(focal_supwindNA), nrow(focal_supwindAU)))
+  res_snpnaeuau[i,10] = tst$statistic[[1]] #x2 value
+  res_snpnaeuau[i,11] = tst$parameter[[1]] #df
+  res_snpnaeuau[i,12] = tst$p.value # pval
+  }
+  
+  #EUAU
+  if(nrow(uniqAU)>0 & nrow(uniqEU) > 0){ # only calculate if there are unique windows in each range
+  tst = prop.test(x= c(nrow(uniqEU), nrow(uniqAU)), n=c(nrow(focal_supwindEU), nrow(focal_supwindAU)))
+  res_snpnaeuau[i,14] = tst$statistic[[1]] #x2 value
+  res_snpnaeuau[i,15] = tst$parameter[[1]] #df
+  res_snpnaeuau[i,16] = tst$p.value # pval
+  }
+}
+res_snpnaeuau$qNAEU = p.adjust(res_snpnaeuau$pNAEU, method = 'fdr')
+res_snpnaeuau$qNAAU = p.adjust(res_snpnaeuau$pNAAU, method = 'fdr')
+res_snpnaeuau$qEUAU = p.adjust(res_snpnaeuau$pEUAU, method = 'fdr')
+res_snpnaeuau$env <- factor(res_snpnaeuau$env, levels = c("Latitude_all", "Longitude_all","alt_all", "bio1_all", "bio2_all", "bio3_all",  "bio4_all", "bio5_all","bio6_all","bio7_all","bio8_all", "bio9_all","bio10_all", "bio11_all", "bio12_all","bio13_all","bio14_all","bio15_all","bio16_all","bio17_all","bio18_all","bio19_all"))
+
+write.table(res_snpnaeuau, "prop_uniqwind_envrange")
+```
+
+Plot proportion of unique loci per env per range
+---
+```{r}
+res_unq = select(res_snpnaeuau,env,starts_with("prop"))
+mres_unq = melt(res_unq)
+
+p95na= p95eu = p95au = p95gl= 1/length(levels(as.factor(res_unq$env)))
+ci95 = select(res_snpnaeuau,env)
+ci95$propNA = p95na + c(qnorm(0.95))*sqrt((1/sum(envwind_na$n))*p95na*(1-p95na))
+ci95$propEU = p95eu + c(qnorm(0.95))*sqrt((1/sum(envwind_eu$n))*p95eu*(1-p95eu))
+ci95$propAU = p95au + c(qnorm(0.95))*sqrt((1/sum(envwind_au$n))*p95au*(1-p95au))
+propGL = p95gl + c(qnorm(0.95))*sqrt((1/sum(envwind_gl$n))*p95gl*(1-p95gl))
+
+mci95=melt(ci95)
+
+mres_unqci = combine(mres_unq, mci95) #turn dplyr off
+
+mres_unqci$env <- factor(mres_unqci$env, levels = c("Latitude_all", "Longitude_all","alt_all", "bio1_all", "bio2_all", "bio3_all",  "bio4_all", "bio5_all","bio6_all","bio7_all","bio8_all", "bio9_all","bio10_all", "bio11_all", "bio12_all","bio13_all","bio14_all","bio15_all","bio16_all","bio17_all","bio18_all","bio19_all"))
+mres_unqci$variable <- factor(mres_unqci$variable, levels = c( "propAU","propEU", "propNA" ))
+
+pdf("prop_uniq_outwind_env_range.pdf", height=3.5, width=7)
+  ggplot()+
+  geom_bar(data = mres_unqci[which(mres_unqci$source=="mres_unq"),], aes(env, value, fill = variable),stat = 'identity',position="dodge") +
+    geom_bar(data = mres_unqci[which(mres_unqci$source=="mci95"),], aes(env, value, fill = variable),stat = 'identity',position="dodge", alpha=0, size=.1, color="black") + theme_bw()  
+dev.off()
+
+mres_unqci_subsub = mres_unqci %>% filter(variable!="NA" &env %in% c("bio1_all","bio2_all", "bio4_all", "bio8_all", "bio12_all","bio15_all","bio17_all", "alt_all", "Latitude_all", "Longitude_all"))
+
+pdf("prop_uniq_outwind_env_range_subsub.pdf", height=3.5, width=7)
+  ggplot()+
+  geom_bar(data = mres_unqci_subsub[which(mres_unqci_subsub$source=="mres_unq"),], aes(env, value, fill = variable),stat = 'identity',position="dodge") +
+    geom_bar(data = mres_unqci_subsub[which(mres_unqci_subsub$source=="mci95"),], aes(env, value, fill = variable),stat = 'identity',position="dodge", alpha=0, size=.1, color="black") + theme_bw()  
+
+  dev.off()
+```
+
+
+Based on binom results only
+```{r}
+length(intersect(wind_na$windIDenv,wind_eu$windIDenv)) # total number of shared windows over all variables
+length(intersect(supwind_na$windIDenv,supwind_eu$windIDenv)) # total number of shared outlier windows, env has to be the same but window can be identified with multiple envs
+
+# phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where q=size of outlier overlap-1; m=number of outlier windows range#1;  #n=(total number shared windows-m); k=number of outlier windows range#2.
+
+phyper(length(intersect(supwind_na$windIDenv,supwind_eu$windIDenv))-1 ,length(levels(supwind_na)),  length(intersect(wind_na$windIDenv,wind_eu$windIDenv)) - length(intersect(supwind_na$windIDenv,supwind_eu$windIDenv)), length(levels(supwind_eu)), lower.tail = F, log.p = FALSE)
+phyper(length(intersect(supwind_na$windIDenv,supwind_au$windIDenv))-1 ,length(levels(supwind_na)),  length(intersect(supwind_na$windIDenv,wind_au$windIDenv)) - length(intersect(supwind_na$windIDenv,supwind_au$windIDenv)), length(levels(supwind_au)), lower.tail = F, log.p = FALSE)
+phyper(length(intersect(supwind_eu$windIDenv,supwind_au$windIDenv))-1 ,length(levels(supwind_eu)),  length(intersect(supwind_eu$windIDenv,wind_au$windIDenv)) - length(intersect(supwind_eu$windIDenv,supwind_au$windIDenv)), length(levels(supwind_au)), lower.tail = F, log.p = FALSE)
+
+#to check what the cut-off for overlap was:
+phyper(1500 ,nrow(supwind_eu),length(intersect(supwind_eu$windIDenv,wind_au$windIDenv)) - length(intersect(supwind_eu$windIDenv,supwind_au$windIDenv)), nrow(supwind_au), lower.tail = F, log.p = FALSE)
+
+##Number of windows, irrespective of environment associated with
+# total number of shared windows identified in any of the environments # total number of shared outlier windows, no rep among env
+phyper(length(intersect(supwind_na$windID,supwind_eu$windID))-1, length(levels(as.factor(supwind_na$windID))),  length(intersect(wind_na$windID,wind_eu$windID)) - length(levels(as.factor(supwind_na$windID))), length(levels(as.factor(supwind_eu$windID))), lower.tail = F, log.p = FALSE) #NAEU
+phyper(length(intersect(supwind_na$windID,supwind_au$windID))-1, length(levels(as.factor(supwind_na$windID))),  length(intersect(wind_na$windID,wind_au$windID)) - length(levels(as.factor(supwind_na$windID))), length(levels(as.factor(supwind_au$windID))), lower.tail = F, log.p = FALSE) #NAAU
+phyper(length(intersect(supwind_eu$windID,supwind_au$windID))-1, length(levels(as.factor(supwind_eu$windID))),  length(intersect(wind_eu$windID,wind_au$windID)) - length(levels(as.factor(supwind_eu$windID))), length(levels(as.factor(supwind_au$windID))), lower.tail = F, log.p = FALSE) #EUAU
+
+##Number of windows xtx
+phyper(length(intersect(xsupwind_na$windID,xsupwind_eu$windID))-1, length(levels(as.factor(xsupwind_na$windID))),  length(intersect(xna$windID,xeu$windID)) - length(levels(as.factor(xsupwind_na$windID))), length(levels(as.factor(xsupwind_eu$windID))), lower.tail = F, log.p = FALSE) #NAEU
+phyper(length(intersect(xsupwind_na$windID,xsupwind_au$windID))-1, length(levels(as.factor(xsupwind_na$windID))),  length(intersect(xna$windID,xau$windID)) - length(levels(as.factor(xsupwind_na$windID))), length(levels(as.factor(xsupwind_au$windID))), lower.tail = F, log.p = FALSE) #NAAU
+phyper(length(intersect(xsupwind_eu$windID,xsupwind_au$windID))-1, length(levels(as.factor(xsupwind_eu$windID))),  length(intersect(xeu$windID,xau$windID)) - length(levels(as.factor(xsupwind_eu$windID))), length(levels(as.factor(xsupwind_au$windID))), lower.tail = F, log.p = FALSE) #EUAU
+```
+
+Based on binom and nullw
+```{r}
+bfn_NA = bfn_all %>% filter(Range=="nat") %>% droplevels()
+bfn_EU = bfn_all%>% filter( Range=="EU") %>% droplevels()
+bfn_AU = bfn_all%>% filter( Range=="AU")%>% droplevels() 
+bfn_bsup_NA = bfn_all%>% filter(qbinom=="yes"& Range=="nat") %>% droplevels()
+bfn_bsup_EU = bfn_all%>% filter(qbinom=="yes"& Range=="EU") %>% droplevels()
+bfn_bsup_AU = bfn_all%>% filter(qbinom=="yes"& Range=="AU")%>% droplevels() 
+
+bfn_sup_NA = bfn_all%>% filter(binnullw=="yes"& Range=="nat") %>% droplevels()
+bfn_sup_EU = bfn_all%>% filter(binnullw=="yes"& Range=="EU") %>% droplevels()
+bfn_sup_AU = bfn_all%>% filter(binnullw=="yes"& Range=="AU")%>% droplevels() 
+
+xn_NA = xn_all %>% filter(Range=="nat") %>% droplevels()
+xn_EU = xn_all%>% filter( Range=="EU") %>% droplevels()
+xn_AU = xn_all%>% filter( Range=="AU")%>% droplevels() 
+xn_bsup_NA = xn_all %>% filter(binom=="yes"& Range=="nat") %>% droplevels()
+xn_bsup_EU = xn_all%>% filter(binom=="yes"& Range=="EU") %>% droplevels()
+xn_bsup_AU = xn_all%>% filter(binom=="yes"& Range=="AU")%>% droplevels() 
+
+xn_sup_NA = xn_all%>% filter(binnullw=="yes"& Range=="nat") %>% droplevels()
+xn_sup_EU = xn_all%>% filter(binnullw=="yes"& Range=="EU") %>% droplevels()
+xn_sup_AU = xn_all%>% filter(binnullw=="yes"& Range=="AU")%>% droplevels() 
+# phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where q=size of outlier overlap-1; m=number of outlier windows range#1;  #n=(total number shared windows-m); k=number of outlier windows range#2.
+
+phyper(length(intersect(bfn_sup_NA$windID,bfn_sup_EU$windID))-1, length(levels(bfn_sup_NA$windID)),  length(intersect(wind_na$windID,wind_eu$windID)) - length(levels(bfn_sup_NA$windID)), length(levels(bfn_sup_EU$windID)), lower.tail = F, log.p = FALSE)
+phyper(length(intersect(bfn_sup_EU$windID,bfn_sup_AU$windID))-1, length(levels(bfn_sup_EU$windID)),  length(intersect(wind_eu$windID,wind_au$windID)) - length(levels(bfn_sup_EU$windID)), length(levels(bfn_sup_AU$windID)), lower.tail = F, log.p = FALSE)
+phyper(length(intersect(bfn_sup_NA$windID,bfn_sup_AU$windID))-1, length(levels(bfn_sup_NA$windID)),  length(intersect(wind_na$windID,wind_au$windID)) - length(levels(bfn_sup_NA$windID)), length(levels(bfn_sup_AU$windID)), lower.tail = F, log.p = FALSE)
+
+phyper(length(intersect(xn_sup_NA$windID,xn_sup_EU$windID))-1, length(levels(xn_sup_NA$windID)),  length(intersect(xna$windID,xeu$windID)) - length(levels(xn_sup_NA$windID)), length(levels(xn_sup_EU$windID)), lower.tail = F, log.p = FALSE)
+phyper(length(intersect(xn_sup_EU$windID,xn_sup_AU$windID))-1, length(levels(xn_sup_EU$windID)),  length(intersect(xeu$windID,xau$windID)) - length(levels(xn_sup_EU$windID)), length(levels(xn_sup_AU$windID)), lower.tail = F, log.p = FALSE)
+phyper(length(intersect(xn_sup_NA$windID,xn_sup_AU$windID))-1, length(levels(xn_sup_NA$windID)),  length(intersect(xna$windID,xau$windID)) - length(levels(xn_sup_NA$windID)), length(levels(xn_sup_AU$windID)), lower.tail = F, log.p = FALSE)
+```
+
+
+
+
+Identify overlap of unique outlier windows (uniq), parallel outliers (windows that do have repeats among multiple env within a range, par) and if unique outliers have a pleiotropic function in another range.
+---
+```{r}
+data1=list()
+data2=list()
+data3=list()
+
+library(gdata) #load again for combine
+for(i in 1:length(levels(supwind_na$envvar))){
+  focal_supwindNA = supwind_na[which(supwind_na$envvar==levels(supwind_na$envvar)[i]),] # all outliers in NA for envvar[i]
+  othersupwindNA = supwind_na[which(supwind_na$envvar!=levels(supwind_na$envvar)[i]),] #all outliers in NA not in envvar[i]
+  uniqNA = anti_join(focal_supwindNA, othersupwindNA, by = "windID")
+  parNA = anti_join( focal_supwindNA,uniqNA, by = "windID")
+  focal_supwindEU = supwind_eu[which(supwind_eu$envvar==levels(supwind_eu$envvar)[i]),]
+  othersupwindEU = supwind_eu[which(supwind_eu$envvar!=levels(supwind_eu$envvar)[i]),]
+  uniqEU = anti_join(focal_supwindEU, othersupwindEU, by = "windID")
+  parEU = anti_join( focal_supwindEU,uniqEU, by = "windID")
+    focal_supwindAU = supwind_au[which(supwind_au$envvar==levels(supwind_au$envvar)[i]),]
+  othersupwindAU = supwind_au[which(supwind_au$envvar!=levels(supwind_au$envvar)[i]),]
+  uniqAU = anti_join(focal_supwindAU, othersupwindAU, by = "windID")
+  parAU = anti_join( focal_supwindAU,uniqAU, by = "windID")
+
+  if(nrow(uniqEU)>0 & nrow(uniqNA) > 0){ # only calculate if there are unique windows in each range
+  uqNAEU = (intersect(uniqEU$windID, uniqNA$windID))
+  }
+  if(nrow(uniqAU)>0 & nrow(uniqNA) > 0){
+  uqNAAU = (intersect(uniqAU$windID, uniqNA$windID))
+  }
+  if(nrow(uniqEU)>0 & nrow(uniqAU) > 0){
+  uqEUAU =  (intersect(uniqEU$windID, uniqAU$windID))
+  }
+
+  if((length(uqNAEU)+length(uqNAAU)+length(uqEUAU))>0){
+dat = combine(uqNAEU,uqNAAU, uqEUAU)
+dat$env = (levels(supwind_na$envvar)[[i]])
+data1[[i]] <- dat
+uniq = do.call(rbind, data1)
+}
+
+  if(nrow(parEU)>0 & nrow(parNA) > 0){ # only calculate if there are unique windows in each range
+  parNAEU = (intersect(parEU$windID, parNA$windID))
+  }
+  if(nrow(parAU)>0 & nrow(parNA) > 0){
+  parNAAU = (intersect(parAU$windID, parNA$windID))
+  }
+  if(nrow(parEU)>0 & nrow(parAU) > 0){
+  parEUAU = (intersect(parEU$windID, parAU$windID))
+  }
+ 
+  if((length(parNAEU)+length(parNAAU)+length(parEUAU))>0){
+dat = combine(parNAEU,parNAAU, parEUAU)
+dat$env = (levels(supwind_na$envvar)[[i]])
+data2[[i]] <- dat
+par = do.call(rbind, data2)
+}
+
+ if(nrow(uniqNA)>0){ # only calculate if there are unique windows in each range
+ uqparNAEU = (intersect(uniqNA$windID, focal_supwindEU$windID))
+ uqparNAAU = (intersect(uniqNA$windID, focal_supwindAU$windID))
+  }
+  if(nrow(uniqEU)>0){
+  uqparEUNA =(intersect(uniqEU$windID, focal_supwindNA$windID))
+  uqparEUAU = (intersect(uniqEU$windID, focal_supwindAU$windID))
+  }
+  if(nrow(uniqAU)>0){
+  uqparAUNA = (intersect(uniqAU$windID, focal_supwindNA$windID))
+  uqparAUEU = (intersect(uniqAU$windID, focal_supwindEU$windID))
+  }
+
+  if((length(uqparNAEU)+length(uqparNAAU)+length(uqparEUNA)+length(uqparEUAU)+length(uqparAUNA)+length(uqparAUEU))>0){
+dat = combine(uqparNAEU,uqparNAAU, uqparEUNA, uqparEUAU, uqparAUNA , uqparAUEU)
+dat$env = (levels(supwind_na$envvar)[[i]])
+data3[[i]] <- dat
+uniqpar = do.call(rbind, data3)
+}
+} #envvar
+
+allloci = rbind(uniq, par, uniqpar)
+colnames(allloci) = c("windID", "pleit","env")
+```
+
+
+Can I now identify how these loci respond to environments
+```{r}
+sup_NAEUAU = inner_join(inner_join(supwind_na,supwind_eu, by="windID"),supwind_au, by="windID")
+sup_NAEUAUall = as.data.frame(levels(as.factor(sup_NAEUAU$windID)))
+colnames(sup_NAEUAUall)  = "windID"
+test = (left_join(sup_NAEUAUall,allloci, by="windID"))
+count_overlap = count(test, pleit)
+
+bfxtxgcta_sup_NAEUAU = inner_join(inner_join(bfxtxgcta_sup_NA,bfxtxgcta_sup_EU, by="windID"),bfxtxgcta_sup_AU, by="windID")
+bfxtxgcta_sup_NAEU = inner_join(bfxtxgcta_sup_NA,bfxtxgcta_sup_EU, by="windID")
+bfxtxgcta_sup_NAAU = inner_join(bfxtxgcta_sup_NA,bfxtxgcta_sup_AU, by="windID")
+bfxtxgcta_sup_EUAU = inner_join(bfxtxgcta_sup_EU,bfxtxgcta_sup_AU, by="windID")
+
+test = (left_join(bfxtxgcta_sup_NAEUAU,allloci, by="windID"))
+count_overlap = count(test, pleit)
+test = (left_join(bfxtxgcta_sup_NAEU,allloci, by="windID"))
+count_overlap = count(test, pleit)
+test = (left_join(bfxtxgcta_sup_NAAU,allloci, by="windID"))
+count_overlap = count(test, pleit)
+test = (left_join(bfxtxgcta_sup_EUAU,allloci, by="windID"))
+count_overlap = count(test, pleit)
+```
+
+
+##END SCRIPT###
+===

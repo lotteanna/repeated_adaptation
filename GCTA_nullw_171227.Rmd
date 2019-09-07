@@ -1,0 +1,125 @@
+Null-W
+===
+
+Script by   
+Sam Yeaman (1)  
+Kathryn Hodgins (1,2)  
+Lotte van Boheemen (2)  
+
+1) Original script, Yeaman & Hodgins et al., 2016
+2) Amendments to apply to ragweed dataset
+
+```{r,include=FALSE}
+library("knitr")
+library("dplyr")
+library("plyr")
+
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
+```
+
+
+> NOT YET WORKING
+
+
+
+Step 1: Get windows identified through xtx pipeline to match gcta windows
+```{r}
+snp_allwindow <- read.table("all_windows_500-500_99.txt",header = T)
+
+snp_allwindow_gcta <- read.table("test_SNPinfo",header = T)
+snp_allwindow_gcta$windID <- paste(snp_allwindow_gcta$contig, snp_allwindow_gcta$win.start, snp_allwindow_gcta$win.end, sep="__")
+
+gcta_wind <- read.table("test2", header=T)
+gcta_wind$windID <-  paste(gcta_wind$contig, gcta_wind$win.start, gcta_wind$win.end, sep="__")
+super_gcta <- subset(gcta_wind, topcan_q=="TRUE") #only select outlier windows
+
+backgroundSNP_gcta <- anti_join(snp_allwindow_gcta,super_gcta, by = "windID") # all SNPs (+info) NOT in a outlier window
+nonout_win_gcta <- subset(gcta_wind, topcan_q=="FALSE") #all non-outlier windows
+```
+
+
+Step 2: Sample 1000 SNPs from these windows per range (as the XtX values are range specific)
+
+Get all non-superoutliers that are also not NA without replacement 1k times
+
+```{r}
+set.seed (12345)
+indsamp_gtca <- rowSums (is.na(backgroundSNP_gcta)) # counts the number of NA per row
+which_gcta <- which (indsamp_gtca== 0) # select rows which have no NA                  
+subsampled1K_gcta <- backgroundSNP_gcta[sample(which_gcta,1000,replace = F),]
+```
+
+Step 3: compare the xtx values of the 1000 random SNPs with the non-superoutlier XTX values for each window using a Wilcox test
+```{r}
+# this is the total number of unique non-outlier windows
+
+nulldist1 <- array (NA,c(length(nonout_win_gcta$windID),2))
+
+for (i in 1:length(nonout_win_gcta$windID)){
+  ind1 <- which (backgroundSNP_gcta$windID == nonout_win_gcta$windID[i]) # loop through each non-outlier window to get the info (eg xtx)
+  sub1 <- backgroundSNP_gcta[ind1, 3] # the third column here are the xtx values
+  temp1 <- wilcox.test((subsampled1K_gcta$pval), (sub1))
+  nulldist1[i,2] <- temp1$statistic
+  nulldist1[i,1] <- sum (is.na (sub1) == F)
+}
+```
+
+Step 4: standardize the value
+```{r}
+nulldist2 <- nulldist1[which (is.na (nulldist1[,2]) == F),]
+zscore_gcta <- (2 * nulldist2[,2] - 1000 * nulldist2[,1]) / sqrt ( 1000 * nulldist2[,1] * (1000 + nulldist2[,1] + 1)/ 3 )
+```
+
+Step 5: find outlier window in one range in the second range and test these windows against the null SNP set and then compare these W values to the null distribution
+
+Find signatures of selection in EU windows identified as outliers in NA
+```{r}
+sub_snp_allwindow <- unique(as.character(snp_allwindow$windID))
+
+count_loop2 <- 0
+
+results_1 <- array (NA, c(length(sub_snp_allwindow),9))
+
+if (length (sub_snp_allwindow) > 0){ #only start loop if we have outlier-windows
+  
+  for (zz in 1:length (sub_snp_allwindow)){
+    
+    samesame_butdifferent <- snp_allwindow_gcta[snp_allwindow_gcta$windID == sub_snp_allwindow[zz],3]
+    # find xtx values of all SNPs of windows (both outlier and non-outlier) in one range that were outlier in the other
+    #rank <- snp_allwindow_gcta[snp_allwindow_gcta$windID == sub_super_na[zz],4]
+    num.outlier <- sum(samesame_butdifferent <= 0.05) # total number of outlier SNPs in window
+    
+    testn <- sum (is.na(samesame_butdifferent) ==F) # total number of SNPs in window
+    testn2 <- sum (is.na (subsampled1K_gcta[,3]) == F) #would this be anything else than 1K?
+    
+    count_loop2 <- count_loop2 + 1
+    
+    if (testn > 1){
+      
+      test1 <- wilcox.test ((samesame_butdifferent), (subsampled1K_gcta[,3]))
+      
+      test1_zscore <- data.frame ("qt" = (2 * as.numeric (test1$statistic) - testn2 * testn) / sqrt ( testn2 * testn * (testn2 + testn + 1)/ 3 ))
+ 
+      results_1[count_loop2,2] <- test1$p.value
+      results_1[count_loop2,3] <- test1$statistic
+      results_1[count_loop2,4] <- testn # number of SNPs in each window
+      results_1[count_loop2,5] <- mean ((samesame_butdifferent),na.rm = T) 
+      results_1[count_loop2,6] <- mean ((subsampled1K_eu[,3]), na.rm = T)
+      results_1[count_loop2,7] <-	as.numeric (test1_zscore[1,1])
+      results_1[count_loop2,8] <- 1 - (sum (as.numeric (test1_zscore[1,1]) > zscore_gcta) / length (zscore_gcta))
+      results_1[count_loop2,9] <- num.outlier
+    }
+    results_1[count_loop2,1] <- sub_snp_allwindow[zz]
+  
+  } #zz
+  
+} ##if enough genes
+
+results_1 
+#write.table(results_1, "nullw_outNA_inEU.txt")
+#write.table(results_1, "nullw_outNA_inEU_500-500_99.txt")
+```
+
+
+
+##END SCRIPT##

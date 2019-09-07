@@ -1,0 +1,92 @@
+Summary paralellism
+===
+
+Script by  
+
+Lotte van Boheemen
+
+Aim of this script is to combine different datasets into 1
+
+```{r,include=FALSE}
+library("dplyr")
+library("plyr")
+library(tidyr)
+```
+
+```{r}
+full <- read.table("bigdataperenv_bf2_1000_99logbf2_allwin_all10K.txt", header=T)
+
+outEUinNA <- full[which(full$comp=="outEUinNA"),]
+outAUinNA <- full[which(full$comp=="outAUinNA"),]
+outAUinEU <- full[which(full$comp=="outAUinEU"),]
+outEUinAU <- full[which(full$comp=="outEUinAU"),]
+outNAinEU <- full[which(full$comp=="outNAinEU"),]
+outNAinAU <- full[which(full$comp=="outNAinAU"),]
+
+# rename columns
+colnames(outEUinNA) <- c("windID", "wilc_pval", "W", "num.SNP_EUNA", "mean.BF_EUNA", "10K_BF", "Z", "emperical_p_EUNA")
+colnames(outAUinNA) <- c("windID","wilc_pval", "W", "num.SNP_AUNA", "mean.BF_AUNA", "10K_BF", "Z", "emperical_p_AUNA")
+colnames(outAUinEU) <- c("windID","wilc_pval", "W", "num.SNP_AUEU", "mean.BF_AUEU", "10K_BF", "Z", "emperical_p_AUEU")
+colnames(outEUinAU) <- c("windID","wilc_pval", "W", "num.SNP_EUAU", "mean.BF_EUAU", "10K_BF", "Z", "emperical_p_EUAU")
+colnames(outNAinEU) <- c("windID","wilc_pval", "W", "num.SNP_NAEU", "mean.BF_NAEU", "10K_BF", "Z", "emperical_p_NAEU")
+colnames(outNAinAU) <- c("windID","wilc_pval", "W", "num.SNP_NAAU", "mean.BF_NAAU", "10K_BF", "Z", "emperical_p_NAAU")
+
+# select only columns of interest
+sub_outEUinNA <- select(outEUinNA, windID, num.SNP_EUNA, mean.BF_EUNA,emperical_p_EUNA)
+sub_outAUinNA <- select(outAUinNA ,windID, num.SNP_AUNA, mean.BF_AUNA,emperical_p_AUNA)
+sub_outAUinEU <- select(outAUinEU, windID, num.SNP_AUEU, mean.BF_AUEU,emperical_p_AUEU)
+sub_outEUinAU <- select(outEUinAU, windID, num.SNP_EUAU, mean.BF_EUAU,emperical_p_EUAU)
+sub_outNAinEU <- select(outNAinEU, windID, num.SNP_NAEU, mean.BF_NAEU,emperical_p_NAEU)
+sub_outNAinAU <- select(outNAinAU, windID, num.SNP_NAAU, mean.BF_NAAU,emperical_p_NAAU)
+
+# join datasets
+windW1 <- full_join(sub_outEUinNA, sub_outAUinNA, by = "windID") 
+windW2 <- full_join(windW1, sub_outAUinEU, by = "windID") 
+windW3 <- full_join(windW2, sub_outNAinEU, by = "windID") 
+windW4 <- full_join(windW3, sub_outEUinAU, by = "windID") 
+windW_all <- full_join(windW4, sub_outNAinAU, by = "windID") 
+
+windna <- read.table("sresbfall_na_1000_99_allwind.txt", header = T)
+windeu <- read.table("sresbfall_eu_1000_99_allwind.txt", header = T)
+windau <- read.table("sresbfall_au_1000_99_allwind.txt", header = T)
+
+windna$windID <- paste(windna$contig, windna$win.start, windna$win.end, windna$envvar, sep="__")
+windeu$windID <- paste(windeu$contig, windeu$win.start, windeu$win.end, windeu$envvar, sep="__")
+windau$windID <- paste(windau$contig, windau$win.start, windau$win.end, windau$envvar, sep="__")
+
+super_na <- subset(windna, topcan_q=="TRUE") #only select outlier windows)
+super_eu <- subset(windeu, topcan_q=="TRUE") #only select outlier windows
+super_au <- subset(windau, topcan_q=="TRUE") 
+
+# create subsets of outlier windows in each range with data needed for summary
+sub_all_na <- select(windna, windID, num.SNPs, win.mean, num.outlier,num.BFoutlier, envvar,  topcan_q)
+colnames(sub_all_na) <- c("windID", "num.SNPs_NA","win.mean_NA", "num.outliers_NA","num.outliersBF_NA","envvarNA", "topcan_qNA")
+sub_all_eu <- select(windeu, windID, num.SNPs, win.mean, num.outlier,num.BFoutlier, envvar, topcan_q)
+colnames(sub_all_eu) <- c("windID", "num.SNPs_EU","win.mean_EU", "num.outliers_EU","num.outliersBF_EU", "envvarEU", "topcan_qEU")
+sub_all_au <- select(windau, windID, num.SNPs, win.mean, num.outlier,num.BFoutlier, envvar, topcan_q)
+colnames(sub_all_au) <- c("windID", "num.SNPs_AU","win.mean_AU", "num.outliers_AU","num.outliersBF_AU","envvarAU", "topcan_qAU")
+
+
+#get a list of all windows
+all_all1 <- full_join(sub_all_na, sub_all_eu, by = "windID")
+all_all2 <- full_join(all_all1, sub_all_au, by = "windID")
+
+all_windows <- inner_join(all_all2, windW_all, by ="windID")
+
+write.table(all_windows,"bfall_windows_1000_99_allwind_par.txt")
+
+
+```
+
+What is the length of the contigs these windows are on
+
+```{r}
+cdata <- read.table("refgenome_data.txt",header=T)
+df <- select(all_windows, windID)
+df <- separate(data = df, col = windID, into = c("contig", "right"), sep = "\\__")
+
+windows <- left_join(df, cdata, by = "contig")
+write.table(windows,"all_windows_1000_99_allwind_info.txt")
+```
+
+##END SCRIPT##

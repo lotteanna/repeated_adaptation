@@ -1,0 +1,721 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+Convergence
+===
+
+> Script by Lotte van Boheemen
+
+
+```{r, include=F}
+library("dplyr")
+library("plyr") 
+library("ggplot2")
+library("reshape")#melt
+library("car") #Anova
+library(gdata)
+library(tidyr) #spread
+library(fifer) #chisqr post-hoc
+library(phia) #interaction contrasts
+library(ggrepel)
+```
+
+---  
+
+Read in data
+```{r}
+cdata <- read.table("refgenome_data.txt",header=T) #reference genome with all scaffold names and lenght
+bfdat_alltmp <- read.table("bf_all_ddgbs.txt",header=T)
+bfdat_all <- cbind(bfdat_alltmp[,1:2],log(bfdat_alltmp[,3:25]))
+bfdat_na<-read.table("logbf_na_ddgbs.txt", header=T) #snp table with scaffold names, location of SNPs and bf values
+bfdat_eu<-read.table("logbf_eu_ddgbs.txt", header=T) #snp table with scaffold names, location of SNPs and bf values
+bfdat_au <- read.table("logbf_au_ddgbs.txt", header=T)
+```
+
+```{r}
+bf_all<-left_join(bfdat_all,cdata,by="contig")
+bf_all$contig <- as.factor(bf_all$contig)
+
+bf_na<-left_join(bfdat_na,cdata,by="contig")
+bf_na$contig <- as.factor(bf_na$contig)
+bf_na$windID = paste0(bf_na$contig, "__", bf_na$location)
+
+bf_eu <- left_join(bfdat_eu,cdata,by="contig")
+bf_eu$contig<-as.factor(bf_eu$contig)
+bf_eu$windID = paste0(bf_eu$contig, "__", bf_eu$location)
+
+bf_au <- left_join(bfdat_au, cdata, by = "contig") # xtx data native range
+bf_au$contig <- as.factor(bf_au$contig)
+bf_au$windID = paste0(bf_au$contig, "__", bf_au$location)
+```
+
+Per main env
+```{r}
+bf_na_lat = dplyr::select(bf_na,windID, Latitude_all)
+bf_eu_lat = dplyr::select(bf_eu,windID, Latitude_all)
+bf_au_lat = dplyr::select(bf_au,windID, Latitude_all)
+
+bf_naeu_lat <- inner_join(bf_na_lat,bf_eu_lat,by="windID") #merge the datafiles form paired ranges
+bf_naau_lat = inner_join(bf_na_lat,bf_au_lat,by="windID") #merge the datafiles form paired ranges
+bf_euau_lat = inner_join(bf_eu_lat,bf_au_lat,by="windID") #merge the datafiles form paired ranges
+
+bf_na_lon = dplyr::select(bf_na,windID, Longitude_all)
+bf_eu_lon = dplyr::select(bf_eu,windID, Longitude_all)
+bf_au_lon = dplyr::select(bf_au,windID, Longitude_all)
+
+bf_naeu_lon <- inner_join(bf_na_lon,bf_eu_lon,by="windID") #merge the datafiles form paired ranges
+bf_naau_lon = inner_join(bf_na_lon,bf_au_lon,by="windID") #merge the datafiles form paired ranges
+bf_euau_lon = inner_join(bf_eu_lon,bf_au_lon,by="windID") #merge the datafiles form paired ranges
+
+bf_na_bio1 = dplyr::select(bf_na,windID, bio1_all)
+bf_eu_bio1 = dplyr::select(bf_eu,windID, bio1_all)
+bf_au_bio1 = dplyr::select(bf_au,windID, bio1_all)
+
+bf_naeu_bio1 <- inner_join(bf_na_bio1,bf_eu_bio1,by="windID") #merge the datafiles form paired ranges
+bf_naau_bio1 = inner_join(bf_na_bio1,bf_au_bio1,by="windID") #merge the datafiles form paired ranges
+bf_euau_bio1 = inner_join(bf_eu_bio1,bf_au_bio1,by="windID") #merge the datafiles form paired ranges
+
+bf_na_bio2 = dplyr::select(bf_na,windID, bio2_all)
+bf_eu_bio2 = dplyr::select(bf_eu,windID, bio2_all)
+bf_au_bio2 = dplyr::select(bf_au,windID, bio2_all)
+
+bf_naeu_bio2 <- inner_join(bf_na_bio2,bf_eu_bio2,by="windID") #merge the datafiles form paired ranges
+bf_naau_bio2 = inner_join(bf_na_bio2,bf_au_bio2,by="windID") #merge the datafiles form paired ranges
+bf_euau_bio2 = inner_join(bf_eu_bio2,bf_au_bio2,by="windID") #merge the datafiles form paired ranges
+
+bf_na_bio5 = dplyr::select(bf_na,windID, bio5_all)
+bf_eu_bio5 = dplyr::select(bf_eu,windID, bio5_all)
+bf_au_bio5 = dplyr::select(bf_au,windID, bio5_all)
+
+bf_naeu_bio5 <- inner_join(bf_na_bio5,bf_eu_bio5,by="windID") #merge the datafiles form paired ranges
+bf_naau_bio5 = inner_join(bf_na_bio5,bf_au_bio5,by="windID") #merge the datafiles form paired ranges
+bf_euau_bio5 = inner_join(bf_eu_bio5,bf_au_bio5,by="windID") #merge the datafiles form paired ranges
+
+bf_na_bio10 = dplyr::select(bf_na,windID, bio10_all)
+bf_eu_bio10 = dplyr::select(bf_eu,windID, bio10_all)
+bf_au_bio10 = dplyr::select(bf_au,windID, bio10_all)
+
+bf_naeu_bio10 <- inner_join(bf_na_bio10,bf_eu_bio10,by="windID") #merge the datafiles form paired ranges
+bf_naau_bio10 = inner_join(bf_na_bio10,bf_au_bio10,by="windID") #merge the datafiles form paired ranges
+bf_euau_bio10 = inner_join(bf_eu_bio10,bf_au_bio10,by="windID") #merge the datafiles form paired ranges
+
+bf_na_bio11 = dplyr::select(bf_na,windID, bio11_all)
+bf_eu_bio11 = dplyr::select(bf_eu,windID, bio11_all)
+bf_au_bio11 = dplyr::select(bf_au,windID, bio11_all)
+
+bf_naeu_bio11 <- inner_join(bf_na_bio11,bf_eu_bio11,by="windID") #merge the datafiles form paired ranges
+bf_naau_bio11 = inner_join(bf_na_bio11,bf_au_bio11,by="windID") #merge the datafiles form paired ranges
+bf_euau_bio11 = inner_join(bf_eu_bio11,bf_au_bio11,by="windID") #merge the datafiles form paired ranges
+```
+
+*Read in windows*
+---
+
+```{r}
+win_na = read.table("bf_1000_99_allwind/bfall_na_1000_bf99_allwinds", header=T)
+win_eu = read.table("bf_1000_99_allwind/bfall_eu_1000_bf99_allwinds", header=T)
+win_au = read.table("bf_1000_99_allwind/bfall_au_1000_bf99_allwinds", header=T)
+win_na$windID = paste0(win_na$contig, "__", win_na$win.start)
+win_eu$windID = paste0(win_eu$contig, "__", win_eu$win.start)
+win_au$windID = paste0(win_au$contig, "__", win_au$win.start)
+```
+
+```{r}
+win_na_lat = win_na[which(win_na$envvar=="Latitude_all"),]
+win_eu_lat = win_eu[which(win_eu$envvar=="Latitude_all"),]
+win_au_lat = win_au[which(win_au$envvar=="Latitude_all"),]
+xw_naeu_lat <- inner_join(win_na_lat,win_eu_lat,by="windID") #merge the datafiles form paired ranges
+xw_naau_lat <- inner_join(win_na_lat,win_au_lat,by="windID") #merge the datafiles form paired ranges
+xw_euau_lat <- inner_join(win_eu_lat,win_au_lat,by="windID") #merge the datafiles form paired ranges
+
+win_na_lon = win_na[which(win_na$envvar=="Longitude_all"),]
+win_eu_lon = win_eu[which(win_eu$envvar=="Longitude_all"),]
+win_au_lon = win_au[which(win_au$envvar=="Longitude_all"),]
+xw_naeu_lon <- inner_join(win_na_lon,win_eu_lon,by="windID") #merge the datafiles form paired ranges
+xw_naau_lon <- inner_join(win_na_lon,win_au_lon,by="windID") #merge the datafiles form paired ranges
+xw_euau_lon <- inner_join(win_eu_lon,win_au_lon,by="windID") #merge the datafiles form paired ranges
+
+win_na_bio1 = win_na[which(win_na$envvar=="bio1_all"),]
+win_eu_bio1 = win_eu[which(win_eu$envvar=="bio1_all"),]
+win_au_bio1 = win_au[which(win_au$envvar=="bio1_all"),]
+xw_naeu_bio1 <- inner_join(win_na_bio1,win_eu_bio1,by="windID") #merge the datafiles form paired ranges
+xw_naau_bio1 <- inner_join(win_na_bio1,win_au_bio1,by="windID") #merge the datafiles form paired ranges
+xw_euau_bio1 <- inner_join(win_eu_bio1,win_au_bio1,by="windID") #merge the datafiles form paired ranges
+
+win_na_bio2 = win_na[which(win_na$envvar=="bio2_all"),]
+win_eu_bio2 = win_eu[which(win_eu$envvar=="bio2_all"),]
+win_au_bio2 = win_au[which(win_au$envvar=="bio2_all"),]
+xw_naeu_bio2 <- inner_join(win_na_bio2,win_eu_bio2,by="windID") #merge the datafiles form paired ranges
+xw_naau_bio2 <- inner_join(win_na_bio2,win_au_bio2,by="windID") #merge the datafiles form paired ranges
+xw_euau_bio2 <- inner_join(win_eu_bio2,win_au_bio2,by="windID") #merge the datafiles form paired ranges
+
+win_na_bio5 = win_na[which(win_na$envvar=="bio5_all"),]
+win_eu_bio5 = win_eu[which(win_eu$envvar=="bio5_all"),]
+win_au_bio5 = win_au[which(win_au$envvar=="bio5_all"),]
+xw_naeu_bio5 <- inner_join(win_na_bio5,win_eu_bio5,by="windID") #merge the datafiles form paired ranges
+xw_naau_bio5 <- inner_join(win_na_bio5,win_au_bio5,by="windID") #merge the datafiles form paired ranges
+xw_euau_bio5 <- inner_join(win_eu_bio5,win_au_bio5,by="windID") #merge the datafiles form paired ranges
+
+win_na_bio10 = win_na[which(win_na$envvar=="bio10_all"),]
+win_eu_bio10 = win_eu[which(win_eu$envvar=="bio10_all"),]
+win_au_bio10 = win_au[which(win_au$envvar=="bio10_all"),]
+xw_naeu_bio10 <- inner_join(win_na_bio10,win_eu_bio10,by="windID") #merge the datafiles form paired ranges
+xw_naau_bio10 <- inner_join(win_na_bio10,win_au_bio10,by="windID") #merge the datafiles form paired ranges
+xw_euau_bio10 <- inner_join(win_eu_bio10,win_au_bio10,by="windID") #merge the datafiles form paired ranges
+
+win_na_bio11 = win_na[which(win_na$envvar=="bio11_all"),]
+win_eu_bio11 = win_eu[which(win_eu$envvar=="bio11_all"),]
+win_au_bio11 = win_au[which(win_au$envvar=="bio11_all"),]
+xw_naeu_bio11 <- inner_join(win_na_bio11,win_eu_bio11,by="windID") #merge the datafiles form paired ranges
+xw_naau_bio11 <- inner_join(win_na_bio11,win_au_bio11,by="windID") #merge the datafiles form paired ranges
+xw_euau_bio11 <- inner_join(win_eu_bio11,win_au_bio11,by="windID") #merge the datafiles form paired ranges
+```
+
+
+*Correlation SNPs*
+---
+
+```{r}
+cor.test(bf_naeu_lat$Latitude_all.x,bf_naeu_lat$Latitude_all.y,method="pearson")
+cor.test(bf_naau_lat$Latitude_all.x,bf_naau_lat$Latitude_all.y,method="pearson")
+cor.test(bf_euau_lat$Latitude_all.x,bf_euau_lat$Latitude_all.y,method="pearson")
+
+cor.test(bf_naeu_lon$Longitude_all.x,bf_naeu_lon$Longitude_all.y,method="pearson")
+cor.test(bf_naau_lon$Longitude_all.x,bf_naau_lon$Longitude_all.y,method="pearson")
+cor.test(bf_euau_lon$Longitude_all.x,bf_euau_lon$Longitude_all.y,method="pearson")
+
+cor.test(bf_naeu_bio1$bio1_all.x,bf_naeu_bio1$bio1_all.y,method="pearson")
+cor.test(bf_naau_bio1$bio1_all.x,bf_naau_bio1$bio1_all.y,method="pearson")
+cor.test(bf_euau_bio1$bio1_all.x,bf_euau_bio1$bio1_all.y,method="pearson")
+
+cor.test(bf_naeu_bio2$bio2_all.x,bf_naeu_bio2$bio2_all.y,method="pearson")
+cor.test(bf_naau_bio2$bio2_all.x,bf_naau_bio2$bio2_all.y,method="pearson")
+cor.test(bf_euau_bio2$bio2_all.x,bf_euau_bio2$bio2_all.y,method="pearson")
+
+cor.test(bf_naeu_bio5$bio5_all.x,bf_naeu_bio5$bio5_all.y,method="pearson")
+cor.test(bf_naau_bio5$bio5_all.x,bf_naau_bio5$bio5_all.y,method="pearson")
+cor.test(bf_euau_bio5$bio5_all.x,bf_euau_bio5$bio5_all.y,method="pearson")
+
+cor.test(bf_naeu_bio10$bio10_all.x,bf_naeu_bio10$bio10_all.y,method="pearson")
+cor.test(bf_naau_bio10$bio10_all.x,bf_naau_bio10$bio10_all.y,method="pearson")
+cor.test(bf_euau_bio10$bio10_all.x,bf_euau_bio10$bio10_all.y,method="pearson")
+
+cor.test(bf_naeu_bio11$bio11_all.x,bf_naeu_bio11$bio11_all.y,method="pearson")
+cor.test(bf_naau_bio11$bio11_all.x,bf_naau_bio11$bio11_all.y,method="pearson")
+cor.test(bf_euau_bio11$bio11_all.x,bf_euau_bio11$bio11_all.y,method="pearson")
+```
+
+
+*range correlations windows*
+---   
+
+```{r}
+cor.test(xw_naeu_lat$win.mean.x,xw_naeu_lat$win.mean.y,method="pearson")
+cor.test(xw_naau_lat$win.mean.x,xw_naau_lat$win.mean.y,method="pearson")
+cor.test(xw_euau_lat$win.mean.x,xw_euau_lat$win.mean.y,method="pearson")
+
+cor.test(xw_naeu_lon$win.mean.x,xw_naeu_lon$win.mean.y,method="pearson")
+cor.test(xw_naau_lon$win.mean.x,xw_naau_lon$win.mean.y,method="pearson")
+cor.test(xw_euau_lon$win.mean.x,xw_euau_lon$win.mean.y,method="pearson")
+
+cor.test(xw_naeu_bio1$win.mean.x,xw_naeu_bio1$win.mean.y,method="pearson")
+cor.test(xw_naau_bio1$win.mean.x,xw_naau_bio1$win.mean.y,method="pearson")
+cor.test(xw_euau_bio1$win.mean.x,xw_euau_bio1$win.mean.y,method="pearson")
+
+cor.test(xw_naeu_bio2$win.mean.x,xw_naeu_bio2$win.mean.y,method="pearson")
+cor.test(xw_naau_bio2$win.mean.x,xw_naau_bio2$win.mean.y,method="pearson")
+cor.test(xw_euau_bio2$win.mean.x,xw_euau_bio2$win.mean.y,method="pearson")
+
+cor.test(xw_naeu_bio5$win.mean.x,xw_naeu_bio5$win.mean.y,method="pearson")
+cor.test(xw_naau_bio5$win.mean.x,xw_naau_bio5$win.mean.y,method="pearson")
+cor.test(xw_euau_bio5$win.mean.x,xw_euau_bio5$win.mean.y,method="pearson")
+
+cor.test(xw_naeu_bio10$win.mean.x,xw_naeu_bio10$win.mean.y,method="pearson")
+cor.test(xw_naau_bio10$win.mean.x,xw_naau_bio10$win.mean.y,method="pearson")
+cor.test(xw_euau_bio10$win.mean.x,xw_euau_bio10$win.mean.y,method="pearson")
+
+cor.test(xw_naeu_bio11$win.mean.x,xw_naeu_bio11$win.mean.y,method="pearson")
+cor.test(xw_naau_bio11$win.mean.x,xw_naau_bio11$win.mean.y,method="pearson")
+cor.test(xw_euau_bio11$win.mean.x,xw_euau_bio11$win.mean.y,method="pearson")
+```
+
+===
+
+*Binning SNPs*
+```{r}
+bf_naeu_lon$myrank_na <- rank(bf_naeu_lon$Longitude_all.x)/length(bf_naeu_lon$Longitude_all.x)
+bf_naeu_lon$myrank_eu <- rank(bf_naeu_lon$Longitude_all.y)/length(bf_naeu_lon$Longitude_all.y)
+bf_naau_lon$myrank_na <- rank(bf_naau_lon$Longitude_all.x)/length(bf_naau_lon$Longitude_all.x)
+bf_naau_lon$myrank_au <- rank(bf_naau_lon$Longitude_all.y)/length(bf_naau_lon$Longitude_all.y)
+bf_euau_lon$myrank_eu <- rank(bf_euau_lon$Longitude_all.x)/length(bf_euau_lon$Longitude_all.x)
+bf_euau_lon$myrank_au <- rank(bf_euau_lon$Longitude_all.y)/length(bf_euau_lon$Longitude_all.y)
+
+bf_naeu_lon$bin_na5 <- as.numeric(cut(bf_naeu_lon$myrank_na, 20, labels=1:20))
+bf_naeu_lon$bin_eu5 <- as.numeric(cut(bf_naeu_lon$myrank_eu, 20, labels=1:20))
+
+bf_naau_lon$bin_na5 <- as.numeric(cut(bf_naau_lon$myrank_na, 20, labels=1:20))
+bf_naau_lon$bin_au5 <- as.numeric(cut(bf_naau_lon$myrank_au, 20, labels=1:20))
+
+bf_euau_lon$bin_eu5 <- as.numeric(cut(bf_euau_lon$myrank_eu, 20, labels=1:20))
+bf_euau_lon$bin_au5 <- as.numeric(cut(bf_euau_lon$myrank_au, 20, labels=1:20))
+```
+
+*Binning windows*
+```{r}
+xw_naeu_lon$myrank_na <- rank(xw_naeu_lon$win.mean.x)/length(xw_naeu_lon$win.mean.x)
+xw_naeu_lon$myrank_eu <- rank(xw_naeu_lon$win.mean.y)/length(xw_naeu_lon$win.mean.y)
+xw_naau_lon$myrank_na <- rank(xw_naau_lon$win.mean.x)/length(xw_naau_lon$win.mean.x)
+xw_naau_lon$myrank_au <- rank(xw_naau_lon$win.mean.y)/length(xw_naau_lon$win.mean.y)
+xw_euau_lon$myrank_eu <- rank(xw_euau_lon$win.mean.x)/length(xw_euau_lon$win.mean.x)
+xw_euau_lon$myrank_au <- rank(xw_euau_lon$win.mean.y)/length(xw_euau_lon$win.mean.y)
+
+xw_naeu_lon$bin_na5 <- as.numeric(cut(xw_naeu_lon$myrank_na, 20, labels=1:20))
+xw_naeu_lon$bin_eu5 <- as.numeric(cut(xw_naeu_lon$myrank_eu, 20, labels=1:20))
+
+xw_naau_lon$bin_na5 <- as.numeric(cut(xw_naau_lon$myrank_na, 20, labels=1:20))
+xw_naau_lon$bin_au5 <- as.numeric(cut(xw_naau_lon$myrank_au, 20, labels=1:20))
+
+xw_euau_lon$bin_eu5 <- as.numeric(cut(xw_euau_lon$myrank_eu, 20, labels=1:20))
+xw_euau_lon$bin_au5 <- as.numeric(cut(xw_euau_lon$myrank_au, 20, labels=1:20))
+```
+
+**Count for each bin how many snps for paired ranges fall in the same bin**
+```{r}
+p= 0.05^2 # chance of sharing a bin (number of bins NA * number of bins EU)
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(bf_naeu_lon)){
+  if(bf_naeu_lon$bin_na5[i] == bf_naeu_lon$bin_eu5[i]){
+    bincount[i,] <- c(bf_naeu_lon$bin_na5[i], bf_naeu_lon$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naeu20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_naeu20$ranges = "NAEU"
+obsexp_naeu20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1 
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(bf_naau_lon)){
+  if(bf_naau_lon$bin_na5[i] == bf_naau_lon$bin_au5[i]){
+    bincount[i,] <- c(bf_naau_lon$bin_na5[i], bf_naau_lon$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_naau20$ranges = "NAAU"
+obsexp_naau20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(bf_euau_lon)){
+  if(bf_euau_lon$bin_eu5[i] == bf_euau_lon$bin_au5[i]){
+    bincount[i,] <- c(bf_euau_lon$bin_eu5[i], bf_euau_lon$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_euau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_euau20$ranges = "EUAU"
+obsexp_euau20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+```
+
+plot
+```{r}
+obsexp_all = rbind(obsexp_naeu20, obsexp_naau20, obsexp_euau20)
+obsexp_all$percent <- as.numeric(obsexp_all$Var1) * 0.05
+
+pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/binall_bfsnp_lon.pdf",height=4,width=4)
+  ggplot()+
+  geom_bar(data = obsexp_all, aes(percent, Freq, fill = ranges),stat = 'identity',position="dodge") +
+  geom_bar(data = obsexp_all, aes(percent, ci95, fill = ranges) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+xlab("Quantiles")+  ylab("Observed/Expected shared SNPs") + theme_bw() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) + ylim(0,6) +theme(legend.position="none")
+dev.off()
+
+```
+
+**Count for each bin how many windows for paired ranges fall in the same bin**
+```{r}
+p= 0.05^2 # chance of sharing a bin (number of bins NA * number of bins EU)
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(xw_naeu_lon)){
+  if(xw_naeu_lon$bin_na5[i] == xw_naeu_lon$bin_eu5[i]){
+    bincount[i,] <- c(xw_naeu_lon$bin_na5[i], xw_naeu_lon$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naeu20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_naeu20$ranges = "NAEU"
+obsexp_naeu20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1 
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(xw_naau_lon)){
+  if(xw_naau_lon$bin_na5[i] == xw_naau_lon$bin_au5[i]){
+    bincount[i,] <- c(xw_naau_lon$bin_na5[i], xw_naau_lon$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_naau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_naau20$ranges = "NAAU"
+obsexp_naau20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+for(i in 1:nrow(xw_euau_lon)){
+  if(xw_euau_lon$bin_eu5[i] == xw_euau_lon$bin_au5[i]){
+    bincount[i,] <- c(xw_euau_lon$bin_eu5[i], xw_euau_lon$windID[i])
+    }
+}
+bincount$bin <- as.numeric(bincount$bin)
+obsexp_euau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+obsexp_euau20$ranges = "EUAU"
+obsexp_euau20$ci95 = (0.05^2*nrow(bincount))*p + c(qnorm(0.95))*sqrt((1/nrow(bincount))*p*(1-p))+1
+```
+
+plot
+```{r}
+obsexp_all = rbind(obsexp_naeu20, obsexp_naau20, obsexp_euau20)
+obsexp_all$percent <- as.numeric(obsexp_all$Var1) * 0.05
+
+pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/binall_bfwind_lon.pdf",height=4,width=4)
+  ggplot()+
+  geom_bar(data = obsexp_all, aes(percent, Freq, fill = ranges),stat = 'identity',position="dodge") +
+  geom_bar(data = obsexp_all, aes(percent, ci95, fill = ranges) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+xlab("Quantiles")+  ylab("Observed/Expected shared windows") + theme_bw() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) + ylim(0,6) +theme(legend.position="none")
+dev.off()
+
+```
+
+
+*Full datasets*
+===
+
+```{r}
+mall= melt(bf_all, id=c("contig", "location", "length"))
+mna= melt(bf_na, id=c("contig", "location", "length"))
+meu= melt(bf_eu, id=c("contig", "location", "length"))
+mau= melt(bf_au, id=c("contig", "location", "length"))
+
+mall$myrank = rank(mall$value)/length(mall$value)
+mna$myrank = rank(mna$value)/length(mna$value)
+meu$myrank = rank(meu$value)/length(meu$value)
+mau$myrank = rank(mau$value)/length(mau$value)
+
+mall$sub1 <- paste(mall$contig, mall$location,sep="__")
+mna$sub1 <- paste(mna$contig, mna$location,sep="__")
+meu$sub1 <- paste(meu$contig, meu$location,sep="__")
+mau$sub1 <- paste(mau$contig, mau$location,sep="__")
+
+mall$sub2 <- paste(mall$sub1, mall$variable,sep="__")
+mna$sub2 <- paste(mna$sub1, mna$variable,sep="__")
+meu$sub2 <- paste(meu$sub1, meu$variable,sep="__")
+mau$sub2 <- paste(mau$sub1, mau$variable,sep="__")
+
+mglna1 = inner_join(mall, mna, by="sub2")
+mgleu1 = inner_join(mall, meu, by="sub2")
+mglau1 = inner_join(mall, mau, by="sub2")
+mnaeu1 = inner_join(mna, meu, by="sub2")
+mnaau1 = inner_join(mna, mau, by="sub2")
+meuau1 = inner_join(meu, mau, by="sub2")
+
+malldata = combine(mall,mna, meu, mau) #package gdata (doesn't work in combination with other packages)
+
+mall_high = mall[which(mall$myrank>=0.99),]
+mna_high = mna[which(mna$myrank>=0.99),]
+meu_high = meu[which(meu$myrank>=0.99),]
+mau_high = mau[which(mau$myrank>=0.99),]
+
+malldata_high <- malldata[which(malldata$myrank>=0.99),]
+
+outl <- as.data.frame(table(malldata_high$variable, malldata_high$source))
+colnames(outl) <- c("Environment", "Range", "SNPs")
+outl2 <- spread(outl,  Range, SNPs)
+colnames(outl2) = c("Environment","NorthAmerica","Europe","Australia")
+write.table(outl2, "../bf99_outliersperrange.txt")
+outl2 = read.table("bf99_outliersperrange.txt", header=T)
+
+ggplot(outl2, aes(x=North.America, y=Europe, colour=as.factor(Environment))) + geom_point()
+ggplot(outl2, aes(x=NorthAmerica, y=Australia, colour=as.factor(Environment))) + geom_point()
+ggplot(outl2, aes(x=Europe, y=Australia, colour=as.factor(Environment))) + geom_point()
+```
+
+for windows
+---
+```{r}
+win_na = read.table("sresbfall_na_1000_99_allwind.txt", header=T)
+win_eu = read.table("sresbfall_eu_1000_99_allwind.txt", header=T)
+win_au = read.table("sresbfall_au_1000_99_allwind.txt", header=T)
+
+win_nasub = dplyr::select(win_na, contig, win.start, envvar, topcan_q)
+win_eusub = dplyr::select(win_eu, contig, win.start, envvar, topcan_q)
+win_ausub = dplyr::select(win_au, contig, win.start, envvar, topcan_q)
+
+malldataw = combine(win_nasub,win_eusub, win_ausub) #package gdata (doesn't work in combination with other packages)
+malldataw_high <- malldataw[which(malldataw$topcan_q=="TRUE"),]
+
+outlw <- as.data.frame(table(malldataw_high$envvar, malldataw_high$source))
+colnames(outlw) <- c("Environment", "Range", "windows")
+outlw2 <- spread(outlw,  Range, windows)
+colnames(outlw2) = c("Environment","NorthAmerica","Europe","Australia")
+write.table(outlw2, "../bfwindbinom_outliersperrange.txt")
+outlw2 = read.table("bfwindbinom_outliersperrange.txt", header=T)
+```
+
+*plot outliers env*
+---
+```{r}
+pdf("_Graph/envoutl_binomwin_NAEU.pdf", height=4, width=4)
+ggplot(outlw2, aes(x=NorthAmerica, y=Europe, colour=as.factor(outlwNAEU), shape=as.factor(outlwNAEU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  xlab("Number of binomial outlier windows\n in North America (native)") +
+  ylab("Number of binomial outlier windows\n in Europe (introduced)") +
+  geom_text_repel()
+dev.off()
+
+pdf("_Graph/envoutl_binomwin_NAAU.pdf", height=4, width=4)
+ggplot(outlw2, aes(x=NorthAmerica, y=Australia, colour=as.factor(outlwNAAU), shape=as.factor(outlwNAAU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  xlab("Number of binomial outlier windows\n in North America (native)") +
+  ylab("Number of binomial outlier windows\n in Australia (introduced)") +
+  geom_text_repel()
+dev.off()
+
+pdf("_Graph/envoutl_binomwin_EUAU.pdf", height=4, width=4)
+ggplot(outlw2, aes(y=Australia, x=Europe, colour=as.factor(outlwEUAU), shape=as.factor(outlwEUAU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  ylab("Number of binomial outlier windows\n in Australia (introduced)") +
+  xlab("Number of binomial outlier windows\n in Europe (introduced)") +
+  geom_text_repel()
+dev.off()
+
+```
+
+
+
+*Outlier overlap between ranges*
+---
+
+
+
+old
+===
+
+Overlap in BF SNP outliers for each environmental variable
+```{r}
+results = list()
+env <- levels(mna_high$variable)
+for(vv in 1:23){
+  mna2 = mna_high[which(mna_high$variable==env[vv]),]
+  meu2 = meu_high[which(meu_high$variable==env[vv]),]
+  results[[vv]] = inner_join(mna2,meu2,by="sub1")
+  mnaeu <- do.call(rbind, results)
+}
+
+tst = table(mnaeu$variable.x)
+write.table(tst, "bf99_naeu")
+#number of unique SNPs shared
+length(mnaeu$sub1)
+
+mnaeu2 = mnaeu1[which(mnaeu1$variable.x==env[2]),]
+plot(mnaeu2$myrank.x~mnaeu2$myrank.y)
+}
+results = list()
+env <- levels(mna_high$variable)
+for(vv in 1:23){
+  mna2 = mna_high[which(mna_high$variable==env[vv]),]
+  mau2 = mau_high[which(mau_high$variable==env[vv]),]
+  results[[vv]] = inner_join(mna2,mau2,by="sub1")
+  mnaau <- do.call(rbind, results)
+}
+
+tst = table(mnaau$variable.x)
+write.table(tst, "bf99_naau")
+#number of unique SNPs shared
+length(mnaau$sub1)
+
+mnaau2 = mnaau1[which(mnaau1$variable.x==env[1]),]
+plot(mnaau2$myrank.x~mnaau2$myrank.y)
+
+results = list()
+env <- levels(meu_high$variable)
+for(vv in 1:23){
+  meu2 = meu_high[which(meu_high$variable==env[vv]),]
+  mau2 = mau_high[which(mau_high$variable==env[vv]),]
+  results[[vv]] = inner_join(meu2,mau2,by="sub1")
+  meuau <- do.call(rbind, results)
+}
+
+tst = table(meuau$variable.x)
+write.table(tst, "bf99_euau")
+#number of unique SNPs shared
+length(meuau$sub1)
+
+meuau2 = meuau1[which(meuau1$variable.x==env[1]),]
+plot(meuau2$myrank.x~meuau2$myrank.y)
+plot(meuau2$value.x~meuau2$value.y)
+
+results = list()
+env <- levels(mna_high$variable)
+for(vv in 1:23){
+  mna2 = mna_high[which(mna_high$variable==env[vv]),]
+  meu2 = meu_high[which(meu_high$variable==env[vv]),]
+  mau2 = mau_high[which(mau_high$variable==env[vv]),]
+  tmp = inner_join(mna2,mau2,by="sub1")
+  results[[vv]] = inner_join(tmp,meu2,by="sub1")
+  mnaeuau <- do.call(rbind, results)
+}
+
+tst = table(mnaeuau$variable.x)
+write.table(tst, "bf99_naeuau")
+#number of unique SNPs shared
+length(mnaeuau$sub1)
+
+mnaau2 = mnaau1[which(mnaau1$variable.x==env[1]),]
+plot(mnaau2$myrank.x~mnaau2$myrank.y)
+```
+
+With just two groups of BF (13-12-17: Not quite sure what this does anymore)
+---
+```{r}
+malldata_high$group = cut(malldata_high$value,c(2,6,15)) 
+bf2all <- malldata_high[which(malldata_high$source=="mall"),]
+bf2na <- malldata_high[which(malldata_high$source=="mna"),]
+bf2eu <- malldata_high[which(malldata_high$source=="meu"),]
+bf2au <- malldata_high[which(malldata_high$source=="mau"),]
+```
+
+```{r}
+results = list()
+env <- levels(bf2na$variable)
+vv = 1
+for(vv in 1:23){
+  bf2na2 = bf2na[which(bf2na$variable==env[vv]),]
+  bf2eu2 = bf2eu[which(bf2eu$variable==env[vv]),]
+  results[[vv]] = inner_join(bf2na2,bf2eu2,by="sub1")
+  vv <- vv + 1
+  bf2naeu <- do.call(rbind, results)
+}
+```
+
+```{r}
+bincount <- data.frame(bin=numeric(), sub1=numeric(), env=numeric(), grouping=numeric())
+env <- levels(bf2naeu$variable.x)
+vv = 1
+j = 1
+for(vv in 1:23){
+  bf2naeu2 = bf2naeu[which(bf2naeu$variable.x==env[vv]),]
+  i=1
+  while(i <= nrow(bf2naeu2)){
+    if(bf2naeu2$group.x[i] == bf2naeu2$group.y[i]){
+    bincount[j,] <- c(bf2naeu2$group.x[i], bf2naeu2$sub1[i],env[vv],1)
+    }
+    else{
+      bincount[j,] <- c(bf2naeu2$group.x[i], bf2naeu2$sub1[i],env[vv],2)
+      }
+     i <- i + 1
+    j = j + 1
+  }
+  vv = vv +1
+}
+
+bf2_naeu2 <- as.data.frame(table(bincount$bin, bincount$env, bincount$grouping))
+bf2_naeu2 <- as.data.frame(table(bincount$env))
+write.table(bf2_naeu2,"bf2_naeu2")
+```
+
+NA-AU
+```{r}
+results = list()
+env <- levels(bf2na$variable)
+vv = 1
+for(vv in 1:23){
+  bf2na2 = bf2na[which(bf2na$variable==env[vv]),]
+  bf2au2 = bf2au[which(bf2au$variable==env[vv]),]
+  results[[vv]] = inner_join(bf2na2,bf2au2,by="sub1")
+  vv <- vv + 1
+  bf2naau <- do.call(rbind, results)
+}
+
+bincount <- data.frame(bin=numeric(), sub1=numeric(), env=numeric(), grouping=numeric())
+env <- levels(bf2naau$variable.x)
+vv = 1
+j = 1
+for(vv in 1:23){
+  bf2naau2 = bf2naau[which(bf2naau$variable.x==env[vv]),]
+  i=1
+  while(i <= nrow(bf2naau2)){
+    if(bf2naau2$group.x[i] == bf2naau2$group.y[i]){
+    bincount[j,] <- c(bf2naau2$group.x[i], bf2naau2$sub1[i],env[vv],1)
+    }
+    else{
+      bincount[j,] <- c(bf2naau2$group.x[i], bf2naau2$sub1[i],env[vv],2)
+      }
+     i <- i + 1
+    j = j + 1
+  }
+  vv = vv +1
+}
+
+bf2_naau2 <- as.data.frame(table(bincount$bin, bincount$env, bincount$grouping))
+bf2_naau3 <- as.data.frame(table(bincount$env))
+write.table(bf2_naau3,"bf2_naau3")
+```
+
+EUAU
+```{r}
+results = list()
+env <- levels(bf2eu$variable)
+vv = 1
+for(vv in 1:23){
+  bf2eu2 = bf2eu[which(bf2eu$variable==env[vv]),]
+  bf2au2 = bf2au[which(bf2au$variable==env[vv]),]
+  results[[vv]] = inner_join(bf2eu2,bf2au2,by="sub1")
+  vv <- vv + 1
+  bf2euau <- do.call(rbind, results)
+}
+
+bincount <- data.frame(bin=numeric(), sub1=numeric(), env=numeric(), grouping=numeric())
+env <- levels(bf2euau$variable.x)
+vv = 1
+j = 1
+for(vv in 1:23){
+  bf2euau2 = bf2euau[which(bf2euau$variable.x==env[vv]),]
+  i=1
+  while(i <= nrow(bf2euau2)){
+    if(bf2euau2$group.x[i] == bf2euau2$group.y[i]){
+    bincount[j,] <- c(bf2euau2$group.x[i], bf2euau2$sub1[i],env[vv],1)
+    }
+    else{
+      bincount[j,] <- c(bf2euau2$group.x[i], bf2euau2$sub1[i],env[vv],2)
+      }
+     i <- i + 1
+    j = j + 1
+  }
+  vv = vv +1
+}
+
+bf2euau2 <- as.data.frame(table(bincount$bin, bincount$env, bincount$grouping))
+bf2euau3 <- as.data.frame(table(bincount$env))
+write.table(bf2euau3,"bf2euau3")
+```
+
+
+```{r}
+big.datana$sub2 <- paste(big.datana$sub,big.datana$variable,"__")
+big.dataeu$sub2 <- paste(big.dataeu$sub,big.dataeu$variable,"__")
+big.dataau$sub2 <- paste(big.dataau$sub,big.dataau$variable,"__")
+
+testna <- select(big.datana,sub2,sub1,variable,value)
+testeu <- select(big.dataau,sub2,sub1,variable,value)
+testau <- select(big.dataau,sub2,sub1,variable,value)
+
+
+testnaeu <- full_join(testna, testeu, by="sub2")
+ggplot(testnaeu, aes(x = value.y,y=value.x,colour=variable.x)) + geom_point() +ylab("Bayes factor Europe")+  xlab("Bayes factor North America") + theme_bw() +xlim(0,10) +ylim(0,15)+theme(legend.position="bottom")
+
+
+```
+
+
+**END SCRIPT**
+===
+
+

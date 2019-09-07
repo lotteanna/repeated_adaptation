@@ -1,0 +1,63 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+SNP contig stats
+===
+
+
+```{r,include=FALSE}
+library("knitr")
+library("dplyr")
+library("plyr")
+
+
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
+```
+
+---
+
+**Read data**
+
+Refgenome_data.txt is a file containing all the contigs of the reference genome, so also regions in which no SNPs are called
+```{r}
+cdata <- read.table("refgenome_data.txt",header=T)
+xdat_na <- read.table("xtx_all_ddgbs.txt",header=T)
+
+dat50 =read.table("_ddGBS_maf05het7_miss50/locinames", header=T)
+snp48$contig <- snp48$CHROM
+
+# get all scaffolds which do not have SNPs
+allf <- anti_join( cdata, dat50,by = "contig")
+nrow(allf)
+
+# get the names of all scaffold which do have SNPs
+allp <- semi_join( cdata, dat50,by="contig")
+nrow(allp)
+summary(allp)
+
+
+alls <- left_join( xdat_na,cdata, by="contig")
+summary(alls$length)
+
+# group data by contig_length & count the number of Snps for each contig
+sum_alls <- alls %>%
+  group_by(contig,length) %>%
+  summarise(newvar = length(contig))
+
+
+hist(sum_alls$length)
+
+pdf("_Graph/snpsperScaf.pdf", width = 4, height = 4)
+hist(sum_alls$newvar, breaks = 100, main = "", xlab = "SNPs per Scaffold")
+dev.off()
+
+summary(sum_alls$newvar)
+
+plot(sum_alls$newvar ~ log(sum_alls$length))
+
+cor.test(sum_alls$length, sum_alls$newvar, method="spearman")
+cor.test(sum_alls$length, sum_alls$newvar, method="pearson")
+
+```

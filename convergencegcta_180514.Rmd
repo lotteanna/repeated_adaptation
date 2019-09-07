@@ -1,0 +1,91 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+Convergence
+===
+
+> Script by Lotte van Boheemen
+
+
+```{r, include=F}
+library("dplyr")
+library("plyr") 
+library("ggplot2")
+library("reshape")#melt
+library("car") #Anova
+library(gdata)
+library(tidyr) #spread
+library(fifer) #chisqr post-hoc
+library(phia) #interaction contrasts
+library(ggrepel)
+```
+
+---  
+
+
+for windows
+---
+```{r}
+win_na = read.table("gcta_1000_top99_supwindNA", header=T)
+win_eu = read.table("gcta_1000_top99_supwindEU", header=T)
+win_au = read.table("gcta_1000_top99_supwindAU", header=T)
+
+win_nasub = dplyr::select(win_na, contig, win.start, phen, topcan_q)
+win_eusub = dplyr::select(win_eu, contig, win.start, phen, topcan_q)
+win_ausub = dplyr::select(win_au, contig, win.start, phen, topcan_q)
+
+malldataw = combine(win_nasub,win_eusub, win_ausub) #package gdata (doesn't work in combination with other packages)
+malldataw_high <- malldataw[which(malldataw$topcan_q=="TRUE"),]
+
+outlw <- as.data.frame(table(malldataw_high$phen, malldataw_high$source))
+colnames(outlw) <- c("Phenotype", "Range", "windows")
+outlw2 <- spread(outlw,  Range, windows)
+
+write.table(outlw2, "../gctawindbinom_outliersperrange.txt")
+
+```
+
+*plot outliers env*
+---
+```{r}
+outlw2 = read.table("gctawindbinom_outliersperrange.txt", header=T)
+colnames(outlw2) = c("Phenotype","Code","NorthAmerica","Europe","Australia", "outlwNAEU","outlwNAAU", "outlwEUAU")
+pdf("_Graph/phenoutl_binomwin_NAEU.pdf", height=4, width=4)
+ggplot(outlw2, aes(x=NorthAmerica, y=Europe, colour=as.factor(outlwNAEU), shape=as.factor(outlwNAEU),label=Code) )+ 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  xlab("Number of binomial outlier windows\n in North America (native)") +
+  ylab("Number of binomial outlier windows\n in Europe (introduced)") +
+  geom_text_repel()+
+   scale_x_continuous(breaks=seq(0,9,2), limits = c(0,9))+ 
+  scale_y_continuous(breaks=seq(0,9,2), limits = c(0,9))
+dev.off()
+
+pdf("_Graph/phenoutl_binomwin_NAAU.pdf", height=4, width=4)
+ggplot(outlw2, aes(x=NorthAmerica, y=Australia, colour=as.factor(outlwNAAU), shape=as.factor(outlwNAAU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  xlab("Number of binomial outlier windows\n in North America (native)") +
+  ylab("Number of binomial outlier windows\n in Australia (introduced)") +
+  geom_text_repel()+
+   scale_x_continuous(breaks=seq(0,9,2), limits = c(0,9))+ 
+  scale_y_continuous(breaks=seq(0,9,2), limits = c(0,9))
+dev.off()
+
+pdf("_Graph/phenoutl_binomwin_EUAU.pdf", height=4, width=4)
+ggplot(outlw2, aes(y=Australia, x=Europe, colour=as.factor(outlwEUAU), shape=as.factor(outlwEUAU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  ylab("Number of binomial outlier windows\n in Australia (introduced)") +
+  xlab("Number of binomial outlier windows\n in Europe (introduced)") +
+  geom_text_repel()+
+  
+   scale_x_continuous(breaks=seq(0,9,2), limits = c(0,9))+ 
+  scale_y_continuous(breaks=seq(0,9,2), limits = c(0,9))
+dev.off()
+
+```
+
+

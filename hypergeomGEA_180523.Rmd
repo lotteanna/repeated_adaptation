@@ -1,0 +1,174 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gdata)
+```
+Overlap in BF wind outliers for each candidate environmental variable
+---
+
+```{r}
+wind_na = read.table("bf_1000_99_allwind/sresbfall_na_1000_99_allwind.txt", header=T)
+wind_eu = read.table("bf_1000_99_allwind/sresbfall_eu_1000_99_allwind.txt", header=T)
+wind_au = read.table("bf_1000_99_allwind/sresbfall_au_1000_99_allwind.txt", header=T)
+wind_na$windID = paste(wind_na$contig, "__", wind_na$win.start)
+wind_eu$windID = paste(wind_eu$contig, "__", wind_eu$win.start)
+wind_au$windID = paste(wind_au$contig, "__", wind_au$win.start)
+wind_na$windIDenv = paste(wind_na$windID, "__", wind_na$envvar)
+wind_eu$windIDenv = paste(wind_eu$windID, "__", wind_eu$envvar)
+wind_au$windIDenv = paste(wind_au$windID, "__", wind_au$envvar)
+
+wind_na$envvar = as.factor(gsub("_all","",wind_na$envvar))
+wind_eu$envvar =  as.factor(gsub("_all","",wind_eu$envvar))
+wind_au$envvar =  as.factor(gsub("_all","",wind_au$envvar))
+```
+
+```{r}
+naeu = read.table("bf_1000_99_allwind/sresbfall_naeu_1000_99_allwind_perenvvar.txt", header=T)
+naau= read.table("bf_1000_99_allwind/sresbfall_naau_1000_99_allwind_perenvvar.txt", header=T)
+euau= read.table("bf_1000_99_allwind/sresbfall_euau_1000_99_allwind_perenvvar.txt", header=T)
+cnaeu = as.data.frame(dplyr::count(naeu, vars=envvar.x))
+cnaau= as.data.frame(dplyr::count(naau, vars=envvar.x))
+ceuau= as.data.frame(dplyr::count(euau, vars=envvar.x))
+
+bf_sup_NA = bfn_sup %>% filter(qbinom=="yes" & Range=="nat") %>% droplevels()
+bf_sup_EU = bfn_sup %>% filter(qbinom=="yes" & Range=="EU") %>% droplevels()
+bf_sup_AU= bfn_sup %>% filter(qbinom=="yes" & Range=="AU") %>% droplevels()
+```
+
+*with nullw*
+```{r}
+bfn_sup = read.table("bf_1000_99_allwind/mbf_1000_99_binnullW.txt", header=T)
+bfn_sup_NA = bfn_sup %>% filter(binnullw=="yes" & Range=="nat") %>% droplevels()
+bfn_sup_EU = bfn_sup %>% filter(binnullw=="yes" & Range=="EU") %>% droplevels()
+bfn_sup_AU = bfn_sup %>% filter(binnullw=="yes" & Range=="AU") %>% droplevels()
+
+naeu = inner_join(bfn_sup_NA,bfn_sup_EU, by="windIDenv")
+naau = inner_join(bfn_sup_NA,bfn_sup_AU, by="windIDenv")
+euau = inner_join(bfn_sup_EU,bfn_sup_AU, by="windIDenv")
+
+cnaeu = as.data.frame(dplyr::count(naeu, vars=env.x))
+cnaau= as.data.frame(dplyr::count(naau, vars=env.x))
+ceuau= as.data.frame(dplyr::count(euau, vars=env.x))
+call = gdata::combine(cnaeu,cnaau,ceuau)
+```
+
+
+
+**Calculate the upper 99th quantile of the hypergeometric distribution**  
+---
+```{r}
+topcan.hyper <- function(outdat1, outdat2,fulldat1, fulldat2, comp){
+  res = data.frame(env=numeric(), overlap=numeric(),  q99=numeric(), p=numeric())
+
+  for(i in 1:length(levels(fulldat1$envvar))){
+    
+  envirs =   levels(fulldat1$envvar)
+  envir = envirs[i]
+  #outdat1 = dataframe with outliers in range 1
+  #outdat2 = dataframe with outliers in range 2
+  #fuldat1 = dataframe with all SNPs or windows in range 1
+  #fulldat2 = dataframe with all SNPs or windows in range 2
+  #env = environmental variable to be tested
+  
+  outdat1env = outdat1 %>% filter(env %in% envir) %>% droplevels()
+  outdat2env = outdat2 %>% filter(env %in% envir) %>% droplevels()
+  fulldat1env = fulldat1 %>% filter(envvar %in% envir) %>% droplevels()
+  fulldat2env = fulldat2 %>% filter(envvar %in% envir) %>% droplevels()
+
+ # phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where q=size of outlier overlap-1; m=number of outlier windows range#1;  #n=(total number shared windows-m); k=number of outlier windows range#2.
+
+q = length(intersect(outdat1env$windIDenv,outdat2env$windIDenv ))   -1
+m = nrow(outdat1env)
+n = length(intersect(fulldat1env$windIDenv,fulldat2env$windIDenv) )-m
+k = nrow(outdat2env)
+
+#I guess expected here is again random distribution, but now I am just showing the top part of the graph
+#obsexp_euau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+expected = 0.01^2*length(intersect(fulldat1env$windIDenv,fulldat2env$windIDenv) )
+
+#obsexp = q/expected #I can do this, but I feel it is making it more complicated
+
+a = 1-phyper(q,m,n,k)
+b = qhyper(0.999,m,n,k)
+#q99 = b/expected #see comment above
+
+  res[i,1] = envir
+  res[i,2] = q+1
+  res[i,3] = b
+  res[i,4] = a
+
+}
+res$q = p.adjust(res$p, method = 'fdr')
+res$comparison = comp
+   return(res)
+
+}
+
+```
+
+Run
+---
+```{r}
+# function(outdat1, outdat2,fulldat1, fulldat2, output)
+N_E = topcan.hyper(bfn_sup_NA,bfn_sup_EU, wind_na, wind_eu, "N-E")
+N_A = topcan.hyper(bfn_sup_NA,bfn_sup_AU, wind_na, wind_au, "N-A")
+E_A = topcan.hyper(bfn_sup_EU,bfn_sup_AU, wind_eu, wind_au, "E-A")
+
+call =rbind(N_E, N_A, E_A)
+```
+
+```{r}
+call = call %>% filter(! env %in% c("dem"))
+
+pdf("_Graph/env_binomnullw99_rangeoverlap.pdf", height=3.5, width=7)
+ggplot(call,aes(env, overlap, fill=comparison))+
+  geom_bar(stat="identity",position='dodge') +
+  geom_bar(data = call, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+dev.off()
+
+call_sub = call %>% filter( env %in% c("bio1","bio2", "bio5", "bio10","bio11", "Latitude", "Longitude"))
+
+pdf("_Graph/env_binomnullw99_rangeoverlap_sub.pdf", height=3.5, width=3.5)
+ggplot(call_sub,aes(env, overlap, fill=comparison))+
+  geom_bar(stat="identity",position='dodge') +
+  geom_bar(data = call_sub, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+ scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+scale_y_continuous(limits=c(0,45))
+dev.off()
+```
+
+Without nullW
+```{r}
+# function(outdat1, outdat2,fulldat1, fulldat2, output)
+N_E = topcan.hyper(bf_sup_NA,bf_sup_EU, wind_na, wind_eu, "N-E")
+N_A = topcan.hyper(bf_sup_NA,bf_sup_AU, wind_na, wind_au, "N-A")
+E_A = topcan.hyper(bf_sup_EU,bf_sup_AU, wind_eu, wind_au, "E-A")
+
+call =rbind(N_E, N_A, E_A)
+```
+
+```{r}
+call = call %>% filter(! env %in% c("dem"))
+
+pdf("_Graph/env_binom99_rangeoverlap.pdf", height=3.5, width=7)
+ggplot(call,aes(env, overlap, fill=comparison))+
+  geom_bar(stat="identity",position='dodge') +
+  geom_bar(data = call, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+dev.off()
+
+call_sub = call %>% filter( env %in% c("bio1","bio2", "bio5", "bio10","bio11", "Latitude", "Longitude"))
+
+pdf("_Graph/env_binom99_rangeoverlap_sub.pdf", height=3.5, width=3.5)
+ggplot(call_sub,aes(env, overlap, fill=comparison))+
+  geom_bar(stat="identity",position='dodge') +
+  geom_bar(data = call_sub, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+scale_y_continuous(limits=c(0,45))
+dev.off()
+```
+
+
+**END SCRIPT**
+===
