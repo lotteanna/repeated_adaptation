@@ -4,14 +4,4 @@ Sequence data are available at the National Center for Biotechnology Information
 
 Citation: van Boheemen, L. A. & Hodgins, K. A. (2019). Rapid repeatable phenotypic and genomic adaptation following multiple introductions. Submitted.
 
-To excecute scripts, they need to be used in the following order:
 
-Growth
-
-Datamanip
-
-ExploreGH
-
-Phen_resub
-
-Graphics
