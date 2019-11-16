@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 Outlier Analysis
 ===
 
@@ -12,16 +17,10 @@ The below code will do the following:
 - Print out number of outliers in SNPs
 - Plot distribution of outliers and actual window sizes within each provided data set (ranges)
 
-> Update 25-6-16: Code is streamlined to run as a function, plot most important graphs and output results, so that input data doesn't have to be changed inside the code
-
 
 ```{r,include=FALSE}
-library("knitr")
-library("dplyr")
-library("plyr")
-library("dplyr")
+library("tidyverse")
 
-opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
 ```
 
 ---
@@ -38,6 +37,8 @@ xdat_all <- read.table("xtx_all_ddgbs.txt",header=T)
 xdat_na <- read.table("xtx_na_ddgbs.txt",header=T)
 xdat_eu <- read.table("xtx_eu_ddgbs.txt",header=T)
 xdat_au <- read.table("xtx_au_ddgbs.txt",header=T)
+
+loci50 <- read_csv("locinames.csv")
 ```
 
 
@@ -45,66 +46,25 @@ Add contig length information to xtx data by combining matrices {dplyr}
 ```{r}
 x_all <- left_join(xdat_all,cdata,by="contig")
 x_all$contig <- as.factor(x_all$contig)
-x_all$myrank <- rank(x_all$xtx)/length(x_all$xtx)
-x_all_100thperc <- (subset(x_all,myrank>=0.99))
-write.table(subset(x_all,myrank>=0.99),"x_all_100thperc")
-plot(x_all$xtx ~ x_all$myrank)
-pdf("_Graph/xna-snps.pdf", height=6, width=6)
-plot(x_all$xtx, col=ifelse(x_all$myrank>=0.99,"red","black"), ylim=c(30,80)) 
-dev.off()
-abline(v=.99)
 
 x_na <- left_join(xdat_na,cdata,by="contig")
 x_na$contig <- as.factor(x_na$contig)
-x_na$myrank <- rank(x_na$xtx)/length(x_na$xtx)
-x_na_100thperc <- (subset(x_na,myrank>=0.99))
-write.table(subset(x_na,myrank>=0.99),"x_na_100thperc")
-plot(x_na$xtx ~ x_na$myrank)
-pdf("_Graph/xna-snps.pdf", height=6, width=6)
-plot(x_na$xtx, col=ifelse(x_na$myrank>=0.99,"red","black"), ylim=c(30,80)) 
-dev.off()
-abline(v=.99)
 
 x_eu <- left_join(xdat_eu, cdata,by="contig")
 x_eu$contig<-as.factor(x_eu$contig)
-x_eu$myrank <- rank(x_eu$xtx)/length(x_eu$xtx)
-x_eu_100thperc <- (subset(x_eu,myrank>=0.99))
-write.table(subset(x_eu,myrank>=0.99),"x_eu_100thperc")
-plot(x_eu$xtx ~ x_eu$myrank)
-pdf("_Graph/xeu-snps.pdf", height=6, width=6)
-plot(x_eu$xtx, col=ifelse(x_eu$myrank>=0.99,"red","black"), ylim=c(30,80)) 
-dev.off()
-abline(v=.99)
 
 x_au <- left_join(xdat_au, cdata,by="contig")
 x_au$contig <- as.factor(x_au$contig)
-x_au$myrank <- rank(x_au$xtx)/length(x_au$xtx)
-x_au_100thperc <- (subset(x_au,myrank>=0.99))
-write.table(x_au_100thperc,"x_au_100thperc")
-plot(x_au$xtx ~ x_au$myrank)
-abline(v=.99)
 ```
 
+Subset for 50% missing data
 ```{r}
-test<- x_na[c(1:72),]
+x_all50 <- left_join(loci50, x_all, by = c("contig", "location"))
+x_na50 <- left_join(loci50, x_na, by = c("contig", "location"))
+x_eu50 <- left_join(loci50, x_eu, by = c("contig", "location"))
+x_au50 <- left_join(loci50, x_au, by = c("contig", "location"))
 
-```
-
-Calculate  stats
-```{r}
-#average length of each contig
-summary(cdata$length)
-
-# Calculate xtx outliers
-summary(x_na$xtx)
-summary(x_eu$xtx)
-summary(x_au$xtx)
-x11()
-plot(x_au$xtx)
-ggplot(x_au, aes(x= myrank, y=xtx)) + geom_point() +
-geom_errorbar(aes(ymin=xtx-se, ymax=xtx+se), width=.05)
-
-str(x_au)
+  
 ```
 
 ---  
@@ -140,9 +100,12 @@ outlier.window <- function(data, output, top){
   for(k in 1:length(cont)){
     
     data2 = data[data$contig==cont[k],]
+    data2_all = x_all[x_all$contig==cont[k],]
     
+    if(nrow(data2_all)>0){
+      
     wID = 1 
-    win.start = as.numeric(data2$location[[1]])
+    win.start = as.numeric(data2_all$location[[1]])
     last.loc <- as.numeric(max(data2$location))
     
     while(win.start <= last.loc){
@@ -174,6 +137,7 @@ outlier.window <- function(data, output, top){
       wID = wID + 1
       
   }## window
+    }
       print(k)
 } ## contig
 
@@ -185,33 +149,10 @@ outlier.window <- function(data, output, top){
 
 Call function for the different datasets
 ```{r}
-outlier.window(test, "test",.99)
-
-outlier.window(x_na, "xtxna_500-500_top95",.95)
-outlier.window(x_eu, "xtxeu_500-500_top95",.95)
-outlier.window(x_au, "xtxau_500-500_top95",.95)
-outlier.window(x_all, "xtxall_500-500_top95_test",.95)
-
-outlier.window(x_all, "xtxall_500-500_top99_test",.99)
-outlier.window(x_na, "xtxna_500-500_top99",.99)
-outlier.window(x_eu, "xtxeu_500-500_top99",.99)
-outlier.window(x_au, "xtxau_500-500_top99",.99)
-
-outlier.window(x_na, "xtxna_1000-1000_top99",.99)
-outlier.window(x_eu, "xtxeu_1000-1000_top99",.99)
-outlier.window(x_au, "xtxau_1000-1000_top99",.99)
-outlier.window(x_all, "xtxall_1000-1000_top99",.99)
-
-outlier.window(x_na, "xtxna_5000-5000_top99",.99)
-outlier.window(x_eu, "xtxeu_5000-5000_top99",.99)
-outlier.window(x_au, "xtxau_5000-5000_top99",.99)
-outlier.window(x_all, "xtxall_5000-5000_top99",.99)
-
-outlier.window(x_na, "xtxna_50-500_top99",.99)
-outlier.window(x_eu, "xtxeu_50-500_top99",.99)
-outlier.window(x_au, "xtxau_50-500_top99",.99)
-
-
+outlier.window(x_na50, "xtxna_1000-1000_top99_50miss_allwinds",.99)
+outlier.window(x_eu50, "xtxeu_1000-1000_top99_50miss_allwinds",.99)
+outlier.window(x_au50, "xtxau_1000-1000_top99_50miss_allwinds",.99)
+outlier.window(x_all50, "xtxall_1000-1000_top99_50miss_allwinds",.99)
 ```
 
   

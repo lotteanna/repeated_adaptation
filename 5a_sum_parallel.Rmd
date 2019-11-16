@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 Summary paralellism
 ===
 
@@ -9,13 +14,11 @@ Aim of this script is to combine different datasets into 1
 
 ```{r,include=FALSE}
 library("knitr")
-library("dplyr")
-library("plyr")
-library(tidyr)
+library(tidyverse)
 ```
 
 ```{r}
-full <- read.table("nullwxtx_1000_99_allwin_all10K.txt", header=T)
+full <- read.table("nullwxtx_1000_99_allwin_70miss_all10K.txt", header=T)
 
 outEUinNA <- full[which(full$V10=="outEUinNA"),]
 outAUinNA <- full[which(full$V10=="outAUinNA"),]
@@ -50,9 +53,9 @@ windW_all <- full_join(windW4, sub_outNAinAU, by = "windID")
 
 
 # outlier windows identified with qbinom in "xtxwind_conv.Rmd""
-windna <- read.table("sres1000-1000_na99_allwinds", header = T)
-windeu <- read.table("sres1000-1000_eu99_allwinds", header = T)
-windau <- read.table("sres1000-1000_au99_allwinds", header = T)
+windna <- read.table("sres1000-1000_na99_70miss_allwinds", header = T)
+windeu <- read.table("sres1000-1000_eu99_70miss_allwinds", header = T)
+windau <- read.table("sres1000-1000_au99_70miss_allwinds", header = T)
 
 super_na <- subset(windna, topcan_q=="TRUE") #only select outlier windows
 super_na$windID <- paste(super_na$contig, super_na$win.start, super_na$win.end, sep="__")
@@ -76,7 +79,7 @@ super_all2 <- full_join(super_all1, sub_super_au, by = "windID")
 all_windows <- full_join(super_all2, windW_all, by ="windID")
 
 #write.table(all_windows,"all_windows.txt")
-write.table(all_windows,"xtxall_windows_1000-1000_99_allwinds_par.txt")
+write.table(all_windows,"xtxall_windows_1000-1000_99_allwinds_par_70miss.txt")
 
 
 ```

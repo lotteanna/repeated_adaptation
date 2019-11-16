@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 
 
 
@@ -7,55 +12,44 @@ library("dplyr")
 library("plyr")
 library("dplyr")
 
-opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data/_3EAA/rawfiles')
 ```
 
+
+Reformat the BayEnv2 output by averaging across runs, rescaling using log-transformation and adding loci names.
+
 ```{r}
-A<-read.table("bf_result_all3")
+
+# bayenv2 output files, all populations
+A<-read.table("bf_result_all3") 
 B<-read.table("bf_result_all2")
 C<-read.table("bf_result_all1")
 
+# overage over the 3 independent runs
 my.list<-list(A,B,C)
 meanmall <-Reduce("+", my.list) / length(my.list)
 write.table(meanall,"bf_mean_all.txt",sep="\t",col.names=FALSE,row.names=FALSE)
 
-first<-seq(2,70,3)
+# extract the Bayes Factors from the dataframe
+first <- seq(2,70,3)
   bf <- data.frame(meanmall[,first])
 write.table(bf,"bf_mean_all",sep="\t",col.names=FALSE,row.names=FALSE)
 
+# exctract the Spearman's rho from the dateframe
 second<-seq(3,70,3)
   rho <- data.frame(meanmall[,second])
+  
+# exctract the Pearson's R from the dateframe
+
 third<-seq(4,70,3)
   pearr <- data.frame(meanmall[,third])
-  
+
+# log-scale all variables
 logA <- log(bf)
 logB <- log(B[2:24])
 logC <- log(C[2:24])
 
-
-###
-A<-read.table("bf_result_na4")
-B<-read.table("bf_result_na5")
-C<-read.table("bf_result_na6")
-
-my.list<-list(A,B,C)
-meanmna <-Reduce("+", my.list) / length(my.list)
-#write.table(meanmna,"bf_mean_na.txt",sep="\t",col.names=FALSE,row.names=FALSE)
-
-first<-seq(2,70,3)
-  bf <- data.frame(meanmna[,first])
-write.table(bf,"bf_mean_all",sep="\t",col.names=FALSE,row.names=FALSE)
-
-second<-seq(3,70,3)
-  rho <- data.frame(meanmall[,second])
-third<-seq(4,70,3)
-  pearr <- data.frame(meanmall[,third])
-  
-logA <- log(bf)
-logB <- log(B[2:24])
-logC <- log(C[2:24])
-
-
+# bayenv2 output files, North American populations
 A<-read.table("bf_result_na3")
 B<-read.table("bf_result_na2")
 C<-read.table("bf_result_na1")
@@ -73,8 +67,7 @@ my.listlog<-list(logA,logB,logC)
 meanmlna <-Reduce("+", my.listlog) / length(my.listlog)
 write.table(meanmlna,"bf_mean_nalog",sep="\t",col.names=FALSE,row.names=FALSE)
 
-##
-
+# bayenv2 output files,European populations
 A<-read.table("bf_result_eu4")
 B<-read.table("bf_result_eu5")
 C<-read.table("bf_result_eu6")
@@ -85,8 +78,6 @@ second<-seq(3,70,3)
   rho <- data.frame(meanm[,second])
 third<-seq(4,70,3)
   pearr <- data.frame(meanm[,third])
-  
-
 
 A<-read.table("bf_result_eu3")
 B<-read.table("bf_result_eu2")
@@ -106,8 +97,7 @@ meanmleu <-Reduce("+", my.listlog) / length(my.listlog)
 write.table(meanmleu,"bf_mean_eulog",sep="\t",col.names=FALSE,row.names=FALSE)
 
 
-##
-
+# bayenv2 output files, Australian populations
 A<-read.table("bf_result_au4")
 B<-read.table("bf_result_au5")
 C<-read.table("bf_result_au6")
@@ -131,7 +121,7 @@ my.listlog<-list(logA,logB,logC)
 meanmlau <-Reduce("+", my.listlog) / length(my.listlog)
 write.table(meanmlau,"bf_mean_aulog",sep="\t",col.names=FALSE,row.names=FALSE)
 
-#get these files from PGD spider which also prepared the input for bayenv2
+#get loci files from PGD spider which also prepared the input for bayenv2
 all.loci<- read.table("all_loci.txt", header = T)
 
 na.loci<- read.table("na.loci")
@@ -140,6 +130,7 @@ eu.loci<- read.table("eu.loci")
 
 ```
 
+Add loci names to dataframes with BF
 
 ```{r}
 bf_all_ddgbs <- cbind(all.loci, bf)
@@ -155,8 +146,8 @@ write.table(logbf_au_ddgbs,"logbf_au_ddgbs.txt")
 
 ```
 
-xtx
----
+Repeat above steps for XtX results
+
 
 ```{r}
 A<-read.table("xtx_result_all3")

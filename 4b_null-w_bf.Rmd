@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 Null-W
 ===
 
@@ -10,26 +15,25 @@ Lotte van Boheemen (2)
 2) Amendments to apply to ragweed dataset
 
 ```{r,include=FALSE}
-library("dplyr")
-library("plyr")
+library("tidyverse")
 ```
 
 
 Step 1: load and select data
 ```{r}
-snp_allwindow_na <- read.table("bfall_na_1000_bf99_allwinds_SNPinfo",header = T)
+snp_allwindow_na <- read.table("bfall_na_1000_bf99_50miss_allwinds_SNPinfo",header = T)
 snp_allwindow_na$windID <- paste(snp_allwindow_na$contig, snp_allwindow_na$win.start, snp_allwindow_na$win.end,snp_allwindow_na$envvar, sep="__")
-allwind_na <- read.table("sresbfall_na_1000_99_allwind.txt", header = T) #all windows
+allwind_na <- read.table("sresbfall_na_1000_99_50miss_allwind.txt", header = T) #all windows
 allwind_na$windID  <- paste(allwind_na$contig, allwind_na$win.start, allwind_na$win.end, allwind_na$envvar,sep="__")
 
-snp_allwindow_eu <- read.table("bfall_eu_1000_bf99_allwinds_SNPinfo",header = T)
+snp_allwindow_eu <- read.table("bfall_eu_1000_bf99_50miss_allwinds_SNPinfo",header = T)
 snp_allwindow_eu$windID <- paste(snp_allwindow_eu$contig, snp_allwindow_eu$win.start, snp_allwindow_eu$win.end, snp_allwindow_eu$envvar,sep="__")
-allwind_eu <- read.table("sresbfall_eu_1000_99_allwind.txt", header = T) #all outlier windows
+allwind_eu <- read.table("sresbfall_eu_1000_99_50miss_allwind.txt", header = T) #all outlier windows
 allwind_eu$windID  <- paste(allwind_eu$contig, allwind_eu$win.start, allwind_eu$win.end,allwind_eu$envvar, sep="__")
 
-snp_allwindow_au <- read.table("bfall_au_1000_bf99_allwinds_SNPinfo",header = T)
+snp_allwindow_au <- read.table("bfall_au_1000_bf99_50miss_allwinds_SNPinfo",header = T)
 snp_allwindow_au$windID <- paste(snp_allwindow_au$contig, snp_allwindow_au$win.start, snp_allwindow_au$win.end,snp_allwindow_au$envvar, sep="__")
-allwind_au <- read.table("sresbfall_au_1000_99_allwind.txt", header = T) #all outlier windows
+allwind_au <- read.table("sresbfall_au_1000_99_50miss_allwind.txt", header = T) #all outlier windows
 allwind_au$windID  <- paste(allwind_au$contig, allwind_au$win.start, allwind_au$win.end, allwind_au$envvar, sep="__")
 ```
 
@@ -54,7 +58,7 @@ Step 2: compare the bf values of the 10000 random SNPs with the non-superoutlier
   nulldist2 <- nulldist1[which (is.na (nulldist1[,2]) == F),]
   zscore_na <- (2 * nulldist2[,2] - 10000 * nulldist2[,1]) / sqrt ( 10000 * nulldist2[,1] * (10000 + nulldist2[,1] + 1)/ 3 )
   
-  write.csv(zscore_na,"zscore_na")
+  write.csv(zscore_na,"zscore_na_50miss")
 ```
 
 ```{r}
@@ -77,7 +81,7 @@ for(i in 1:length(nonout_win_eu$windID)){
   nulldist2 <- nulldist1[which (is.na (nulldist1[,2]) == F),]
   zscore_eu <- (2 * nulldist2[,2] - 10000 * nulldist2[,1]) / sqrt ( 10000 * nulldist2[,1] * (10000 + nulldist2[,1] + 1)/ 3 )
 
-  write.csv(zscore_eu,"zscore_eu")
+  write.csv(zscore_eu,"zscore_eu_50miss")
 
 ```  
 
@@ -102,7 +106,7 @@ for(i in 1:length(nonout_win_au$windID)){
   nulldist2 <- nulldist1[which (is.na (nulldist1[,2]) == F),]
   zscore_au <- (2 * nulldist2[,2] - 10000 * nulldist2[,1]) / sqrt ( 10000 * nulldist2[,1] * (10000 + nulldist2[,1] + 1)/ 3 )
   
-    write.csv(zscore_au,"zscore_au")
+    write.csv(zscore_au,"zscore_au_50miss")
 
 ```  
 
@@ -287,5 +291,5 @@ dat = rbind(results_1,results_2, results_3, results_4,results_5,results_6)
 datar <- list()
 bigdat = do.call(rbind, datar)
 
-write.table(dat,"bigdataperenv_bf2_1000_99logbf2_allwin_all10K.txt")
+write.table(dat,"bigdataperenv_bf2_1000_99logbf2_50miss_allwin_all10K.txt")
 ```

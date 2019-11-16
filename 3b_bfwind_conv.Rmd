@@ -18,19 +18,17 @@ Below code will calculating the number of outliers per sliding window as follows
 > Update 11-7-17: Transformed for melted data (all environmental variables)
 
 ```{r, include=F}
-library("dplyr")
-library("plyr")
-library("tidyr")
+library("tidyverse")
 library(binom)
 ```
 
 
 Read in data
 ```{r}
-results_testall <- read.table("bf_all_1000-1000_bf99_allwinds", header=T)
-results_testna <- read.table("bfall_na_1000_bf99_allwinds", header=T)
-results_testeu <- read.table("bfall_eu_1000_bf99_allwinds", header=T)
-results_testau <- read.table("bfall_au_1000_bf99_allwinds", header=T)
+results_testall <- read.table("bf_all_1000-1000_bf99_50miss_allwinds", header=T)
+results_testna <- read.table("bfall_na_1000_bf99_50miss_allwinds", header=T)
+results_testeu <- read.table("bfall_eu_1000_bf99_50miss_allwinds", header=T)
+results_testau <- read.table("bfall_au_1000_bf99_50miss_allwinds", header=T)
 ```
 
 ---   
@@ -40,8 +38,6 @@ results_testau <- read.table("bfall_au_1000_bf99_allwinds", header=T)
 ```{r}
 topcan.binom <- function(dat, output){
   
-  ##Update following email Kay 13-7-16: the expected proportion is highly reduced when excluding windows with no outliers from the start. Better to run analyses with these windows and exclude no-outlier windows later on. 
-  #sdat <- subset(dat,num.outlier > 0) # exclude windows without outliers
   sdat <- subset(dat,num.SNPs > 1) # exclude windows with less than 2 SNPs
 
   #sdat <- dat
@@ -78,13 +74,6 @@ topcan.binom <- function(dat, output){
     }
   }
   
-  #pdf(paste0("_Graph/", output , ".pdf"), width = 4, height = 4)
- # plot(sdat$num.outlier ~ sdat$num.SNPs,  col = as.numeric(sdat$topcan_q +1), xlab= "Number of SNPs per window", ylab="Number of log(bf) outliers", ylim = c(1,5))
-#  for(k in 1:ncol(coverage)){
-  #lines(n, ci.lower[,k], col=k, lwd=1)
-#  lines(n, q.upper[,k], col=k, lwd=1)
- #   }
-# dev.off() 
 
   write.table(sdat, file = output)
   return(subset(sdat, topcan_q == "TRUE"))
@@ -93,10 +82,10 @@ topcan.binom <- function(dat, output){
 ```
 
 ```{r}
-topcan.binom(results_testall, "sresbfall_all_1000_99_allwind.txt")
-topcan.binom(results_testna, "sresbfall_na_1000_99_allwind.txt")
-topcan.binom(results_testeu, "sresbfall_eu_1000_99_allwind.txt")
-topcan.binom(results_testau, "sresbfall_au_1000_99_allwind.txt")
+topcan.binom(results_testall, "sresbfall_all_1000_99_50miss_allwind.txt")
+topcan.binom(results_testna, "sresbfall_na_1000_99_50miss_allwind.txt")
+topcan.binom(results_testeu, "sresbfall_eu_1000_99_50miss_allwind.txt")
+topcan.binom(results_testau, "sresbfall_au_1000_99_50miss_allwind.txt")
 ```
 
 
@@ -105,10 +94,10 @@ topcan.binom(results_testau, "sresbfall_au_1000_99_allwind.txt")
 **Overlap in top-candidate outlier windows between ranges**
 
 ```{r}
-bf_all <- read.table("sresbfall_all_1000_99_allwind.txt")
-bf_na <- read.table("sresbfall_na_1000_99_allwind.txt")
-bf_eu <- read.table("sresbfall_eu_1000_99_allwind.txt")
-bf_au <- read.table("sresbfall_au_1000_99_allwind.txt")
+bf_all <- read.table("sresbfall_all_1000_99_50miss_allwind.txt")
+bf_na <- read.table("sresbfall_na_1000_99_50miss_allwind.txt")
+bf_eu <- read.table("sresbfall_eu_1000_99_50miss_allwind.txt")
+bf_au <- read.table("sresbfall_au_1000_99_50miss_allwind.txt")
 
 tc_all <- subset(bf_all, topcan_q == "TRUE")
 tc_all$sub1 <- paste(tc_all$contig, tc_all$win.start, sep="__")
@@ -144,21 +133,21 @@ sres_naeu2 <- inner_join(tc_na, tc_eu, by="sub2")
 sres_naau2 <- inner_join(tc_na, tc_au, by="sub2")
 sres_euau2 <- inner_join(tc_eu, tc_au, by="sub2")
 
-write.table(sres_allna, "sresbfall_glna_1000_99_allwind_crossenvvar.txt")
-write.table(sres_alleu, "sresbfall_gleu_1000_99_allwind_crossenvvar.txt")
-write.table(sres_allau, "sresbfall_glau_1000_99_allwind_crossenvvar.txt")
+write.table(sres_allna, "sresbfall_glna_1000_99_50miss_allwind_crossenvvar.txt")
+write.table(sres_alleu, "sresbfall_gleu_1000_99_50miss_allwind_crossenvvar.txt")
+write.table(sres_allau, "sresbfall_glau_1000_99_50miss_allwind_crossenvvar.txt")
 
-write.table(sres_naeu, "sresbfall_naeu_1000_99_allwind_crossenvvar.txt")
-write.table(sres_naau, "sresbfall_naau_1000_99_allwind_crossenvvar.txt")
-write.table(sres_euau, "sresbfall_euau_1000_99_allwind_crossenvvar.txt")
+write.table(sres_naeu, "sresbfall_naeu_1000_99_50miss_allwind_crossenvvar.txt")
+write.table(sres_naau, "sresbfall_naau_1000_99_50miss_allwind_crossenvvar.txt")
+write.table(sres_euau, "sresbfall_euau_1000_99_50miss_allwind_crossenvvar.txt")
 
-write.table(sres_allna2, "sresbfall_glna_1000_99_allwind_perenvvar.txt")
-write.table(sres_alleu2, "sresbfall_gleu_1000_99_allwind_perenvvar.txt")
-write.table(sres_allau2, "sresbfall_glau_1000_99_allwind_perenvvar.txt")
+write.table(sres_allna2, "sresbfall_glna_1000_99_50miss_allwind_perenvvar.txt")
+write.table(sres_alleu2, "sresbfall_gleu_1000_99_50miss_allwind_perenvvar.txt")
+write.table(sres_allau2, "sresbfall_glau_1000_99_50miss_allwind_perenvvar.txt")
 
-write.table(sres_naeu2, "sresbfall_naeu_1000_99_allwind_perenvvar.txt")
-write.table(sres_naau2, "sresbfall_naau_1000_99_allwind_perenvvar.txt")
-write.table(sres_euau2, "sresbfall_euau_1000_99_allwind_perenvvar.txt")
+write.table(sres_naeu2, "sresbfall_naeu_1000_99_50miss_allwind_perenvvar.txt")
+write.table(sres_naau2, "sresbfall_naau_1000_99_50miss_allwind_perenvvar.txt")
+write.table(sres_euau2, "sresbfall_euau_1000_99_50miss_allwind_perenvvar.txt")
 ```
 
 

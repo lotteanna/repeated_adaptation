@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 Summary paralellism
 ===
 
@@ -8,13 +13,12 @@ Lotte van Boheemen
 Aim of this script is to combine different datasets into 1
 
 ```{r,include=FALSE}
-library("dplyr")
-library("plyr")
-library(tidyr)
+library("tidyverse")
+
 ```
 
 ```{r}
-full <- read.table("bigdataperenv_bf2_1000_99logbf2_allwin_all10K.txt", header=T)
+full <- read.table("bigdataperenv_bf2_1000_99logbf2_70miss_allwin_all10K.txt", header=T)
 
 outEUinNA <- full[which(full$comp=="outEUinNA"),]
 outAUinNA <- full[which(full$comp=="outAUinNA"),]
@@ -24,12 +28,12 @@ outNAinEU <- full[which(full$comp=="outNAinEU"),]
 outNAinAU <- full[which(full$comp=="outNAinAU"),]
 
 # rename columns
-colnames(outEUinNA) <- c("windID", "wilc_pval", "W", "num.SNP_EUNA", "mean.BF_EUNA", "10K_BF", "Z", "emperical_p_EUNA")
-colnames(outAUinNA) <- c("windID","wilc_pval", "W", "num.SNP_AUNA", "mean.BF_AUNA", "10K_BF", "Z", "emperical_p_AUNA")
-colnames(outAUinEU) <- c("windID","wilc_pval", "W", "num.SNP_AUEU", "mean.BF_AUEU", "10K_BF", "Z", "emperical_p_AUEU")
-colnames(outEUinAU) <- c("windID","wilc_pval", "W", "num.SNP_EUAU", "mean.BF_EUAU", "10K_BF", "Z", "emperical_p_EUAU")
-colnames(outNAinEU) <- c("windID","wilc_pval", "W", "num.SNP_NAEU", "mean.BF_NAEU", "10K_BF", "Z", "emperical_p_NAEU")
-colnames(outNAinAU) <- c("windID","wilc_pval", "W", "num.SNP_NAAU", "mean.BF_NAAU", "10K_BF", "Z", "emperical_p_NAAU")
+colnames(outEUinNA) <- c("windID", "wilc_pval", "W", "num.SNP_EUNA", "mean.BF_EUNA", "10K_BF", "Z", "emperical_p_EUNA", "source")
+colnames(outAUinNA) <- c("windID","wilc_pval", "W", "num.SNP_AUNA", "mean.BF_AUNA", "10K_BF", "Z", "emperical_p_AUNA", "source")
+colnames(outAUinEU) <- c("windID","wilc_pval", "W", "num.SNP_AUEU", "mean.BF_AUEU", "10K_BF", "Z", "emperical_p_AUEU", "source")
+colnames(outEUinAU) <- c("windID","wilc_pval", "W", "num.SNP_EUAU", "mean.BF_EUAU", "10K_BF", "Z", "emperical_p_EUAU", "source")
+colnames(outNAinEU) <- c("windID","wilc_pval", "W", "num.SNP_NAEU", "mean.BF_NAEU", "10K_BF", "Z", "emperical_p_NAEU", "source")
+colnames(outNAinAU) <- c("windID","wilc_pval", "W", "num.SNP_NAAU", "mean.BF_NAAU", "10K_BF", "Z", "emperical_p_NAAU", "source")
 
 # select only columns of interest
 sub_outEUinNA <- select(outEUinNA, windID, num.SNP_EUNA, mean.BF_EUNA,emperical_p_EUNA)
@@ -46,9 +50,9 @@ windW3 <- full_join(windW2, sub_outNAinEU, by = "windID")
 windW4 <- full_join(windW3, sub_outEUinAU, by = "windID") 
 windW_all <- full_join(windW4, sub_outNAinAU, by = "windID") 
 
-windna <- read.table("sresbfall_na_1000_99_allwind.txt", header = T)
-windeu <- read.table("sresbfall_eu_1000_99_allwind.txt", header = T)
-windau <- read.table("sresbfall_au_1000_99_allwind.txt", header = T)
+windna <- read.table("sresbfall_na_1000_99_70miss_allwind.txt", header = T)
+windeu <- read.table("sresbfall_eu_1000_99_70miss_allwind.txt", header = T)
+windau <- read.table("sresbfall_au_1000_99_70miss_allwind.txt", header = T)
 
 windna$windID <- paste(windna$contig, windna$win.start, windna$win.end, windna$envvar, sep="__")
 windeu$windID <- paste(windeu$contig, windeu$win.start, windeu$win.end, windeu$envvar, sep="__")
@@ -73,7 +77,7 @@ all_all2 <- full_join(all_all1, sub_all_au, by = "windID")
 
 all_windows <- inner_join(all_all2, windW_all, by ="windID")
 
-write.table(all_windows,"bfall_windows_1000_99_allwind_par.txt")
+write.table(all_windows,"bfall_windows_1000_99_allwind_par_70miss.txt")
 
 
 ```
@@ -86,7 +90,7 @@ df <- select(all_windows, windID)
 df <- separate(data = df, col = windID, into = c("contig", "right"), sep = "\\__")
 
 windows <- left_join(df, cdata, by = "contig")
-write.table(windows,"all_windows_1000_99_allwind_info.txt")
+write.table(windows,"all_windows_1000_99_allwind_info_70miss.txt")
 ```
 
 ##END SCRIPT##

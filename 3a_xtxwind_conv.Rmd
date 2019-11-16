@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 Convergence between outlier windows
 ===  
 
@@ -14,29 +19,24 @@ Below code will calculating the number of outliers per sliding window as follows
 
 
 ```{r, include=F}
-library("dplyr")
-library("plyr")
+library("tidyverse")
 library(binom)
 ```
 
 
 Read in data
 ```{r}
-results_all99 <- read.table("xtxall_1000-1000_top99_allwinds")
+results_all99 <- read.table("xtxna_1000-1000_top99_50miss_allwinds")
 
-results_na99 <- read.table("xtxna_1000-1000_top99_allwinds")
-results_eu99 <- read.table("xtxeu_1000-1000_top99_allwinds")
-results_au99 <- read.table("xtxau_1000-1000_top99_allwinds")
+results_na99 <- read.table("xtxna_1000-1000_top99_50miss_allwinds")
+results_eu99 <- read.table("xtxeu_1000-1000_top99_50miss_allwinds")
+results_au99 <- read.table("xtxau_1000-1000_top99_50miss_allwinds")
 ```
 
 ---   
 
 ```{r}
 topcan.binom <- function(dat, output){
-  
-  ##Update following email Kay 13-7-16: the expected proportion is highly reduced when excluding windows with no outliers from the start. Better to run analyses with these windows and exclude no-outlier windows later on. 
-  #sdat <- subset(dat,num.outlier > 0) # exclude windows without outliers
-  #sdat <- subset(sdat,num.SNPs > 1) # exclude windows with less than 2 SNPs
 
   sdat <- dat
   set.seed(0)
@@ -79,11 +79,11 @@ topcan.binom <- function(dat, output){
 ```
 
 ```{r}
-topcan.binom(results_all99, "sres1000-1000_all99_allwinds")
+topcan.binom(results_all99, "sres1000-1000_all99_50miss_allwinds")
 
-topcan.binom(results_na99, "sres1000-1000_na99_allwinds")
-topcan.binom(results_eu99, "sres1000-1000_eu99_allwinds")
-topcan.binom(results_au99, "sres1000-1000_au99_allwinds")
+topcan.binom(results_na99, "sres1000-1000_na99_50miss_allwinds")
+topcan.binom(results_eu99, "sres1000-1000_eu99_50miss_allwinds")
+topcan.binom(results_au99, "sres1000-1000_au99_50miss_allwinds")
 ```
 
 
@@ -92,25 +92,25 @@ topcan.binom(results_au99, "sres1000-1000_au99_allwinds")
 **Overlap in top-candidate outlier windows between ranges**
 
 ```{r}
-tc_all99 <- read.table("sres1000-1000_all99_allwinds")
+tc_all99 <- read.table("sres1000-1000_all99_50miss_allwinds")
 tc_all99 <- subset(tc_all99, topcan_q == "TRUE")
 
-tc_na99 <- read.table("sres1000-1000_na99_allwinds")
+tc_na99 <- read.table("sres1000-1000_na99_50miss_allwinds")
 tc_na99 <- subset(tc_na99, topcan_q == "TRUE")
 tc_na99$sub1 <- paste(tc_na99$contig, tc_na99$win.start, sep="__")
-tc_eu99 <- read.table("sres1000-1000_eu99_allwinds")
+tc_eu99 <- read.table("sres1000-1000_eu99_50miss_allwinds")
 tc_eu99 <- subset(tc_eu99, topcan_q == "TRUE")
 tc_eu99$sub1 <- paste(tc_eu99$contig, tc_eu99$win.start, sep="__")
-tc_au99 <- read.table("sres1000-1000_au99_allwinds")
+tc_au99 <- read.table("sres1000-1000_au99_50miss_allwinds")
 tc_au99 <- subset(tc_au99, topcan_q == "TRUE")
 tc_au99$sub1 <- paste(tc_au99$contig,tc_au99$win.start, sep="__")
 
 sres99_naeu <- inner_join(tc_na99, tc_eu99, by="sub1")
-write.table(sres99_naeu, "sres99_naeu_1000_allwinds.txt")
+write.table(sres99_naeu, "sres99_naeu_1000_50miss_allwinds.txt")
 sres99_naau <- inner_join(tc_na99, tc_au99, by="sub1")
-write.table(sres99_naau, "sres99_naau_1000_allwinds.txt")
+write.table(sres99_naau, "sres99_naau_1000_50miss_allwinds.txt")
 sres99_euau <- inner_join(tc_eu99, tc_au99, by="sub1")
-write.table(sres99_euau ,"sres99_euau_1000_allwinds.txt")
+write.table(sres99_euau ,"sres99_euau_1000_50miss_allwinds.txt")
 ```
 
 ---  
@@ -119,8 +119,7 @@ write.table(sres99_euau ,"sres99_euau_1000_allwinds.txt")
 
 Renaut, Sebastien, Gregory L. Owens, and Loren H. Rieseberg. "Shared selective pressure and local genomic landscape lead to repeatable patterns of genomic divergence in sunflowers." Molecular ecology 23.2 (2014): 311-324.
 
-Sam Yeaman, Kathryn A. Hodgins, Katie E. Lotterhos, Haktan Sure5, Simon Nadeau, Jon C. Degner, Kristin A. Nurkowski, Pia Smets, Tongli Wang, Laura K. Gray, Katharina J. Liepe, Andreas Hamann, Jason A. Holliday, Michael C. Whitlock, Loren H. Rieseberg, Sally N. Aitken. "Convergent local adaptation to climate in distantly related conifers". *Submitted to Nature (2016)*.
-
+Sam Yeaman, Kathryn A. Hodgins, Katie E. Lotterhos, Haktan Sure5, Simon Nadeau, Jon C. Degner, Kristin A. Nurkowski, Pia Smets, Tongli Wang, Laura K. Gray, Katharina J. Liepe, Andreas Hamann, Jason A. Holliday, Michael C. Whitlock, Loren H. Rieseberg, Sally N. Aitken. "Convergent local adaptation to climate in distantly related conifers". Science 2016
 
 
 ##END SCRIPT##

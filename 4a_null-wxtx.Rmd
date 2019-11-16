@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 Null-W
 ===
 
@@ -10,8 +15,7 @@ Lotte van Boheemen (2)
 2) Amendments to apply to ragweed dataset
 
 ```{r,include=FALSE}
-library("plyr")
-library("dplyr")
+library("tidyverse")
 ```
 
 ```{r}
@@ -20,27 +24,27 @@ top=0.99
 
 Step 1: NA versus EU: Get all EU and NA SNPs in non-superoutlier windows for both regions
 ```{r}
-snp_allwindow_na <- read.table("xtxna_1000-1000_top99_allwinds_SNPinfo",header = T)
+snp_allwindow_na <- read.table("xtxna_1000-1000_top99_50miss_allwinds_SNPinfo",header = T)
 snp_allwindow_na$windID <- paste(snp_allwindow_na$contig, snp_allwindow_na$win.start, snp_allwindow_na$win.end, sep="__") #all SNPs and window information they were allocated to
-allwind_na <- read.table("sres1000-1000_na99_allwinds", header = T) #all windows
+allwind_na <- read.table("sres1000-1000_na99_50miss_allwinds", header = T) #all windows
 allwind_na$windID  <- paste(allwind_na$contig, allwind_na$win.start, allwind_na$win.end, sep="__")
 super_na <- subset(allwind_na, topcan_q=="TRUE") #only select outlier windows
 backgroundSNP_na <- anti_join(snp_allwindow_na,super_na, by = "windID") # all SNPs (+info) NOT in a outlier window
 nonout_win_na <- subset(allwind_na, topcan_q=="FALSE") #all non-outlier windows
 
 # do the same for EU
-snp_allwindow_eu <- read.table("xtxeu_1000-1000_top99_allwinds_SNPinfo",header = T)
+snp_allwindow_eu <- read.table("xtxeu_1000-1000_top99_50miss_allwinds_SNPinfo",header = T)
 snp_allwindow_eu$windID <- paste(snp_allwindow_eu$contig, snp_allwindow_eu$win.start, snp_allwindow_eu$win.end, sep="__") #all SNPs and window information they were allocated to
-allwind_eu <- read.table("sres1000-1000_eu99_allwinds", header = T) #all outlier windows
+allwind_eu <- read.table("sres1000-1000_eu99_50miss_allwinds", header = T) #all outlier windows
 allwind_eu$windID  <- paste(allwind_eu$contig, allwind_eu$win.start, allwind_eu$win.end, sep="__")
 super_eu <- subset(allwind_eu, topcan_q=="TRUE") #only select outlier windows
 backgroundSNP_eu <- anti_join(snp_allwindow_eu, super_eu, by = "windID") 
 nonout_win_eu <- subset(allwind_eu, topcan_q=="FALSE")
 
 # do the same for AU
-snp_allwindow_au <- read.table("xtxau_1000-1000_top99_allwinds_SNPinfo",header = T)
+snp_allwindow_au <- read.table("xtxau_1000-1000_top99_50miss_allwinds_SNPinfo",header = T)
 snp_allwindow_au$windID <- paste(snp_allwindow_au$contig, snp_allwindow_au$win.start, snp_allwindow_au$win.end, sep="__") #all SNPs and window information they were allocated to
-allwind_au <- read.table("sres1000-1000_au99_allwinds", header = T) #all outlier windows
+allwind_au <- read.table("sres1000-1000_au99_50miss_allwinds", header = T) #all outlier windows
 allwind_au$windID  <- paste(allwind_au$contig, allwind_au$win.start, allwind_au$win.end, sep="__")
 super_au <- subset(allwind_au, topcan_q=="TRUE") #only select outlier windows
 backgroundSNP_au <- anti_join(snp_allwindow_au,super_au, by = "windID") 
@@ -117,9 +121,9 @@ zscore_au <- (2 * nulldist2[,2] - 10000 * nulldist2[,1]) / sqrt ( 10000 * nulldi
 ```
 
 ```{r}
-write.table(zscore_na, "zscore_na")
-write.table(zscore_eu, "zscore_eu")
-write.table(zscore_au, "zscore_au")
+write.table(zscore_na, "zscore_na_50miss")
+write.table(zscore_eu, "zscore_eu_50miss")
+write.table(zscore_au, "zscore_au_50miss")
 
 #zscore_na = read.table("zscore_na")
 #zscore_eu = read.table("zscore_eu")
@@ -337,7 +341,7 @@ results_6
 ```{r}
 dat = rbind(results_1,results_2, results_3, results_4,results_5,results_6)
 
-write.table(dat,"nullwxtx_1000_99_allwin_all10K.txt")
+write.table(dat,"nullwxtx_1000_99_allwin_50miss_all10K.txt")
 ```
 
 

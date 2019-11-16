@@ -1,0 +1,145 @@
+
+
+vcftools --vcf filt_maf05.miss90.het0.7.good.vcf --max-missing 0.9 --recode --out filt_maf05.miss10.het0.7.vcf
+ mv filt_maf05.miss10.het0.7.vcf.recode.vcf filt_maf05.miss10.het0.7.good.vcf
+ mv filt_maf05.miss10.het0.7.good.vcf ../10miss
+
+
+module load java/jdk1.7.0_21
+module load gatk/3.5.0
+java -jar /opt/sw/gatk/3.5.0/GenomeAnalysisTK.jar \
+   -T SelectVariants \
+-R /nfs/shares/hodgins-grp/ragweed/HiRise_v2/ragweed_10Feb2016_2ABsE_uppercase70.fasta  \
+   -V filt_maf05.miss10.het0.7.good.vcf \
+   -o filt_maf05.miss10.het0.7.good.AU.vcf \
+--ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES \
+   -sf au.list
+
+java -jar /opt/sw/gatk/3.5.0/GenomeAnalysisTK.jar \
+   -T SelectVariants \
+-R /nfs/shares/hodgins-grp/ragweed/HiRise_v2/ragweed_10Feb2016_2ABsE_uppercase70.fasta  \
+   -V filt_maf05.miss10.het0.7.good.vcf \
+   -o filt_maf05.miss10.het0.7.good.EU.vcf \
+--ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES \
+   -sf eu.list
+
+java -jar /opt/sw/gatk/3.5.0/GenomeAnalysisTK.jar \
+   -T SelectVariants \
+-R /nfs/shares/hodgins-grp/ragweed/HiRise_v2/ragweed_10Feb2016_2ABsE_uppercase70.fasta  \
+   -V filt_maf05.miss10.het0.7.good.vcf \
+   -o filt_maf05.miss10.het0.7.good.NA.vcf \
+--ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES \
+   -sf na.list
+
+mkdir AU NA EU
+cp ../IDEU EU
+cp ../IDNA NA
+cp ../IDAU AU
+
+cp ../40miss/AU/*pheno AU
+cp ../40miss/EU/*pheno EU
+cp ../40miss/NA/*pheno NA
+
+
+
+##########################
+
+
+
+
+mv ../*NA* .
+cat filt_maf05.miss10.het0.7.good.NA.vcf | cut -f1 | grep -v '#' | uniq > tmp
+awk '{print $1, 1}' tmp > keys
+cat filt_maf05.miss10.het0.7.good.NA.vcf | grep -v '#' > tmp2
+awk '{print $1}' tmp2 > tmp3
+awk 'NR==FNR{a[$1]=$2} NR>FNR{$1=a[$1];print}' keys tmp3 > numbercolumnNA
+cut -f2- tmp2 > tmp4
+paste -d"\t" numbercolumnNA tmp4 > tmp5
+cat filt_maf05.miss10.het0.7.good.NA.vcf | grep '#' > filt_maf05.miss10.het0.7.numscafgood.NA.vcf
+cat tmp5 >> filt_maf05.miss10.het0.7.numscafgood.NA.vcf
+cat filt_maf05.miss10.het0.7.good.NA.vcf  | cut -f1-2 | grep -v '#' > locinamesNA
+cat filt_maf05.miss10.het0.7.numscafgood.NA.vcf | grep '##' > filt_maf05.miss10.het0.7.numscafgood_RNID.NA.vcf
+cat filt_maf05.miss10.het0.7.numscafgood.NA.vcf| grep '#' > tmp
+cat tmp | grep -v '##' > tmp2
+cat IDNA >> filt_maf05.miss10.het0.7.numscafgood_RNID.NA.vcf
+cat filt_maf05.miss10.het0.7.numscafgood.NA.vcf | grep -v '#' >> filt_maf05.miss10.het0.7.numscafgood_RNID.NA.vcf
+vcftools --vcf filt_maf05.miss10.het0.7.numscafgood_RNID.NA.vcf --plink --out filt_maf05.miss10.het0.7NA
+/nfs/shares/hodgins-grp/bin/plink-1.07-x86_64/plink --file filt_maf05.miss10.het0.7NA --make-bed --out filt_maf05.miss10.het0.7NA --noweb
+/nfs/shares/hodgins-grp/bin/plink-1.07-x86_64/plink --noweb --bfile filt_maf05.miss10.het0.7NA --indep-pairwise 3 10 .1
+/nfs/shares/hodgins-grp/bin/plink-1.07-x86_64/plink --noweb --bfile filt_maf05.miss10.het0.7NA --extract plink.prune.in 
+/nfs/shares/hodgins-grp/bin/gcta/gcta64  --bfile filt_maf05.miss10.het0.7NA --make-grm --extract plink.prune.in --out filt_maf05.miss10.het0.7NA_sub
+/nfs/shares/hodgins-grp/bin/gcta/gcta64 --grm filt_maf05.miss10.het0.7NA_sub --make-grm --out grm_adjNA
+/nfs/shares/hodgins-grp/bin/gcta/gcta64  --grm grm_adjNA  --pca 10 --out filt_maf05.miss10.het0.7.NA.PCA
+for i in *pheno; do /nfs/shares/hodgins-grp/bin/gcta/gcta64 --mlma --bfile filt_maf05.miss10.het0.7NA  --grm grm_adjNA --qcovar filt_maf05.miss10.het0.7.NA.PCA.eigenvec --pheno $i --out ${i/.pheno/} > ${i/.pheno/}.log 2>&1; done
+
+
+grep -L "Log-likelihood ratio converged" *log
+
+
+#####################
+
+
+
+
+mv ../*EU* .
+cat filt_maf05.miss10.het0.7.good.EU.vcf | cut -f1 | grep -v '#' | uniq > tmp
+awk '{print $1, 1}' tmp > keys
+cat filt_maf05.miss10.het0.7.good.EU.vcf | grep -v '#' > tmp2
+awk '{print $1}' tmp2 > tmp3
+awk 'NR==FNR{a[$1]=$2} NR>FNR{$1=a[$1];print}' keys tmp3 > numbercolumnEU
+cut -f2- tmp2 > tmp4
+paste -d"\t" numbercolumnEU tmp4 > tmp5
+cat filt_maf05.miss10.het0.7.good.EU.vcf | grep '#' > filt_maf05.miss10.het0.7.numscafgood.EU.vcf
+cat tmp5 >> filt_maf05.miss10.het0.7.numscafgood.EU.vcf
+cat filt_maf05.miss10.het0.7.good.EU.vcf  | cut -f1-2 | grep -v '#' > locinamesEU
+cat filt_maf05.miss10.het0.7.numscafgood.EU.vcf | grep '##' > filt_maf05.miss10.het0.7.numscafgood_RNID.EU.vcf
+cat filt_maf05.miss10.het0.7.numscafgood.EU.vcf| grep '#' > tmp
+cat IDEU >> filt_maf05.miss10.het0.7.numscafgood_RNID.EU.vcf
+cat filt_maf05.miss10.het0.7.numscafgood.EU.vcf | grep -v '#' >> filt_maf05.miss10.het0.7.numscafgood_RNID.EU.vcf
+vcftools --vcf filt_maf05.miss10.het0.7.numscafgood_RNID.EU.vcf --plink --out filt_maf05.miss10.het0.7EU
+/nfs/shares/hodgins-grp/bin/plink-1.07-x86_64/plink --file filt_maf05.miss10.het0.7EU --make-bed --out filt_maf05.miss10.het0.7EU --noweb
+/nfs/shares/hodgins-grp/bin/plink-1.07-x86_64/plink --noweb --bfile filt_maf05.miss10.het0.7EU --indep-pairwise 3 10 .1
+/nfs/shares/hodgins-grp/bin/plink-1.07-x86_64/plink --noweb --bfile filt_maf05.miss10.het0.7EU --extract plink.prune.in 
+/nfs/shares/hodgins-grp/bin/gcta/gcta64  --bfile filt_maf05.miss10.het0.7EU --make-grm --extract plink.prune.in --out filt_maf05.miss10.het0.7EU_sub
+/nfs/shares/hodgins-grp/bin/gcta/gcta64 --grm filt_maf05.miss10.het0.7EU_sub --make-grm --out grm_adjEU
+/nfs/shares/hodgins-grp/bin/gcta/gcta64  --grm grm_adjEU  --pca 10 --out filt_maf05.miss10.het0.7.EU.PCA
+for i in *pheno; do /nfs/shares/hodgins-grp/bin/gcta/gcta64 --mlma --bfile filt_maf05.miss10.het0.7EU  --grm grm_adjEU --qcovar filt_maf05.miss10.het0.7.EU.PCA.eigenvec --pheno $i --out ${i/.pheno/} > ${i/.pheno/}.log 2>&1; done
+
+
+grep -L "Log-likelihood ratio converged" *log
+
+
+
+
+
+
+####################
+
+
+
+mv ../*AU* .
+cat filt_maf05.miss10.het0.7.good.AU.vcf | cut -f1 | grep -v '#' | uniq > tmp
+awk '{print $1, 1}' tmp > keys
+cat filt_maf05.miss10.het0.7.good.AU.vcf | grep -v '#' > tmp2
+awk '{print $1}' tmp2 > tmp3
+awk 'NR==FNR{a[$1]=$2} NR>FNR{$1=a[$1];print}' keys tmp3 > numbercolumnAU
+cut -f2- tmp2 > tmp4
+paste -d"\t" numbercolumnAU tmp4 > tmp5
+cat filt_maf05.miss10.het0.7.good.AU.vcf | grep '#' > filt_maf05.miss10.het0.7.numscafgood.AU.vcf
+cat tmp5 >> filt_maf05.miss10.het0.7.numscafgood.AU.vcf
+cat filt_maf05.miss10.het0.7.good.AU.vcf  | cut -f1-2 | grep -v '#' > locinamesAU
+cat filt_maf05.miss10.het0.7.numscafgood.AU.vcf | grep '##' > filt_maf05.miss10.het0.7.numscafgood_RNID.AU.vcf
+cat filt_maf05.miss10.het0.7.numscafgood.AU.vcf| grep '#' > tmp
+cat IDAU >> filt_maf05.miss10.het0.7.numscafgood_RNID.AU.vcf
+cat filt_maf05.miss10.het0.7.numscafgood.AU.vcf | grep -v '#' >> filt_maf05.miss10.het0.7.numscafgood_RNID.AU.vcf
+vcftools --vcf filt_maf05.miss10.het0.7.numscafgood_RNID.AU.vcf --plink --out filt_maf05.miss10.het0.7AU
+/nfs/shares/hodgins-grp/bin/plink-1.07-x86_64/plink --file filt_maf05.miss10.het0.7AU --make-bed --out filt_maf05.miss10.het0.7AU --noweb
+/nfs/shares/hodgins-grp/bin/plink-1.07-x86_64/plink --noweb --bfile filt_maf05.miss10.het0.7AU --indep-pairwise 3 10 .1
+/nfs/shares/hodgins-grp/bin/plink-1.07-x86_64/plink --noweb --bfile filt_maf05.miss10.het0.7AU --extract plink.prune.in 
+/nfs/shares/hodgins-grp/bin/gcta/gcta64  --bfile filt_maf05.miss10.het0.7AU --make-grm --extract plink.prune.in --out filt_maf05.miss10.het0.7AU_sub
+/nfs/shares/hodgins-grp/bin/gcta/gcta64 --grm filt_maf05.miss10.het0.7AU_sub --make-grm --out grm_adjAU
+/nfs/shares/hodgins-grp/bin/gcta/gcta64  --grm grm_adjAU  --pca 10 --out filt_maf05.miss10.het0.7.AU.PCA
+for i in *pheno; do /nfs/shares/hodgins-grp/bin/gcta/gcta64 --mlma --bfile filt_maf05.miss10.het0.7AU  --grm grm_adjAU --qcovar filt_maf05.miss10.het0.7.AU.PCA.eigenvec --pheno $i --out ${i/.pheno/} > ${i/.pheno/}.log 2>&1; done
+
+
+grep -L "Log-likelihood ratio converged" *log

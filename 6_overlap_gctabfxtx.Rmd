@@ -7,52 +7,121 @@ editor_options:
 
 
 ```{r}
-library("dplyr")
-library("tidyr")
-library("ggplot2")
+library("tidyverse")
 library("reshape")#melt
 library("car") #Anova
 library(gdata)
-library(tidyr) #spread
-library(fifer)
 ```
 
 Calculate probability of overlap
 ---
 ```{r}
-bfna = read.table("sresbfall_na_1000_99_allwind.txt", header=T)
-bfna$windID = paste0(bfna$contig,"__",bfna$win.start)
-bfna$windIDenv = paste0(bfna$contig,"__",bfna$win.start,"__", bfna$envvar)
-bfeu = read.table("sresbfall_eu_1000_99_allwind.txt", header=T)
-bfeu$windID = paste0(bfeu$contig,"__",bfeu$win.start)
-bfeu$windIDenv = paste0(bfeu$contig,"__",bfeu$win.start,"__", bfeu$envvar)
-bfau = read.table("sresbfall_au_1000_99_allwind.txt", header=T)
-bfau$windID = paste0(bfau$contig,"__",bfau$win.start)
-bfau$windIDenv = paste0(bfau$contig,"__",bfau$win.start,"__", bfau$envvar)
+bfn_all = read.table("bf_50miss_redo/mbf_1000_99_binnullW_50miss.txt", header=T)
+xn_all = read.table("xtx_50miss_redo/mxtx_1000_99_binnullW.txt", header=T)
 
-bfna_sup = bfna %>% filter(topcan_q =="TRUE")
-bfeu_sup = bfeu %>% filter(topcan_q =="TRUE")
-bfau_sup = bfau %>% filter(topcan_q =="TRUE")
-
-xna = read.table("sres1000-1000_na99_allwinds", header=T)
-xna$windID = paste0(xna$contig,"__",xna$win.start)
-xeu = read.table("sres1000-1000_eu99_allwinds", header=T)
-xeu$windID = paste0(xeu$contig,"__",xeu$win.start)
-xau = read.table("sres1000-1000_au99_allwinds", header=T)
-xau$windID = paste0(xau$contig,"__",xau$win.start)
-
-xna_sup = xna %>% filter(topcan_q =="TRUE")
-xeu_sup = xeu %>% filter(topcan_q =="TRUE")
-xau_sup = xau %>% filter(topcan_q =="TRUE")
-
-bfn_all = read.table("mbf_1000_99_binnullW.txt", header=T)
-xn_all = read.table("mxtx_1000_99_binnullW.txt", header=T)
-
-gcta_allwind = read.table("gcta_all_1000-1000_top99_allwinds", header=T)
+gcta_allwind = read.table("gcta_1000_allwind/gcta_all_1000-1000_top99_allwinds", header=T)
 gcta_allwind$windID = paste0(gcta_allwind$contig,"__",gcta_allwind$win.start)
 
-gcta = read.table("gcta_1000_top99_supwind", header=T)
+gcta = read.table("gcta_1000_allwind/gcta_1000_top99_supwind", header=T)
 gcta$windID = paste0(gcta$contig,"__",gcta$win.start)
+```
+
+
+Subset data with either binom or nullw outliers
+
+```{r}
+bfn_sup_NA <- bfn_all%>% 
+  filter(binnullw=="yes"& Range=="nat") %>% 
+  droplevels()
+
+bfn_sup_EU <- bfn_all%>% 
+  filter(binnullw=="yes"& Range=="eu") %>% 
+  droplevels()
+
+bfn_sup_AU <- bfn_all%>% 
+  filter(binnullw=="yes"& Range=="au") %>% 
+  droplevels() 
+
+xn_sup_NA <- xn_all %>% 
+  filter(binnullw=="yes"& Range=="nat") %>% 
+  droplevels()
+
+xn_sup_EU <- xn_all %>% 
+  filter(binnullw=="yes"& Range=="eu") %>%
+  droplevels()
+
+xn_sup_AU <-xn_all %>% 
+  filter(binnullw=="yes"& Range=="au")%>% 
+  droplevels() 
+```
+
+
+Window has to have hit in both XtX AND EAA within a range (based on binom or nullw)
+
+```{r}
+bfn_sup_NAall = as.data.frame(levels(as.factor(bfn_sup_NA$windID)))
+colnames(bfn_sup_NAall) = "windID"
+
+bfxtx_sup_NA = inner_join(xn_sup_NA, bfn_sup_NAall, by="windID")
+
+bfn_sup_EUall = as.data.frame(levels(as.factor(bfn_sup_EU$windID)))
+colnames(bfn_sup_EUall) = "windID"
+
+bfxtx_sup_EU = inner_join(xn_sup_EU, bfn_sup_EUall, by="windID")
+
+bfn_sup_AUall = as.data.frame(levels(as.factor(bfn_sup_AU$windID)))
+colnames(bfn_sup_AUall) = "windID"
+
+bfxtx_sup_AU = inner_join(xn_sup_AU, bfn_sup_AUall, by="windID")
+
+bfxtxgcta_sup_NA = select(inner_join(bfxtx_sup_NA, gcta, by="windID"), windID)
+bfxtxgcta_sup_EU = select(inner_join(bfxtx_sup_EU, gcta, by="windID"), windID)
+bfxtxgcta_sup_AU = select(inner_join(bfxtx_sup_AU, gcta, by="windID"), windID)
+```
+
+Test
+---
+
+```{r}
+#EAA-XTX
+phyper(length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID))-1, length(levels(as.factor(bfxtx_sup_NA$windID))),  length(intersect(bfna$windID,bfeu$windID)) - length(levels(as.factor(bfxtx_sup_NA$windID))), length(levels(as.factor(bfxtx_sup_EU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_NAEU
+phyper(length(intersect(bfxtx_sup_EU$windID,bfxtx_sup_AU$windID))-1, length(levels(as.factor(bfxtx_sup_EU$windID))),  length(intersect(bfeu$windID,bfau$windID)) - length(levels(as.factor(bfxtx_sup_EU$windID))), length(levels(as.factor(bfxtx_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_EUAU
+phyper(length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_AU$windID))-1, length(levels(as.factor(bfxtx_sup_NA$windID))),  length(intersect(bfna$windID,bfau$windID)) - length(levels(as.factor(bfxtx_sup_NA$windID))), length(levels(as.factor(bfxtx_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_NAAU
+
+```
+
+Plot
+```{r}
+
+#eaa-xtx
+area1 = length(levels(as.factor(bfxtx_sup_NA$windID)))
+area2= length(levels(as.factor(bfxtx_sup_EU$windID)))
+area3= length(levels(as.factor(bfxtx_sup_AU$windID)))
+n12 = length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID))
+n23 = length(intersect(bfxtx_sup_EU$windID,bfxtx_sup_AU$windID))
+n13 = length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_AU$windID))
+n123 = length(intersect(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID), bfxtx_sup_AU$windID))
+pdf("venn_eaaxtx.pdf")
+draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
+alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
+cat.pos = 0, cat.dist = 0.07,margin = 0.2)
+dev.off()
+
+#all
+area1 = length(levels(as.factor(bfxtxgcta_sup_NA$windID)))
+area2= length(levels(as.factor(bfxtxgcta_sup_EU$windID)))
+area3= length(levels(as.factor(bfxtxgcta_sup_AU$windID)))
+n12 = length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_EU$windID))
+n23 = length(intersect(bfxtxgcta_sup_EU$windID,bfxtxgcta_sup_AU$windID))
+n13 = length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_AU$windID))
+n123 = length(intersect(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_EU$windID), bfxtxgcta_sup_AU$windID))
+pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/venn_bfxtxgcta.pdf")
+draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
+alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
+cat.pos = 0, cat.dist = 0.07,margin = 0.2)
+dev.off()
+
+
 ```
 
 Do GCTA windows associated with traits show signs of selection
@@ -82,194 +151,8 @@ phyper(length(intersect(wind_balluq$windID,unique(gcta$windID)))-1 ,nrow((wind_b
 
 ```
 
-
-Based on binom results only
-```{r}
-length(intersect(bfna$windIDenv,bfeu$windIDenv)) # total number of shared windows over all variables
-length(intersect(bfna_sup$windIDenv,bfeu_sup$windIDenv)) # total number of shared outlier windows, env has to be the same but window can be identified with multiple envs
-
-# phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where q=size of outlier overlap-1; m=number of outlier windows range#1;  #n=(total number shared windows-m); k=number of outlier windows range#2.
-
-phyper(length(intersect(bfna_sup$windIDenv,bfeu_sup$windIDenv))-1 ,length(levels(bfna_sup)),  length(intersect(bfna$windIDenv,bfeu$windIDenv)) - length(intersect(bfna_sup$windIDenv,bfeu_sup$windIDenv)), length(levels(bfeu_sup)), lower.tail = F, log.p = FALSE)
-phyper(length(intersect(bfna_sup$windIDenv,bfau_sup$windIDenv))-1 ,length(levels(bfna_sup)),  length(intersect(bfna_sup$windIDenv,bfau$windIDenv)) - length(intersect(bfna_sup$windIDenv,bfau_sup$windIDenv)), length(levels(bfau_sup)), lower.tail = F, log.p = FALSE)
-phyper(length(intersect(bfeu_sup$windIDenv,bfau_sup$windIDenv))-1 ,length(levels(bfeu_sup)),  length(intersect(bfeu_sup$windIDenv,bfau$windIDenv)) - length(intersect(bfeu_sup$windIDenv,bfau_sup$windIDenv)), length(levels(bfau_sup)), lower.tail = F, log.p = FALSE)
-
-#to check what the cut-off for overlap was:
-phyper(1500 ,nrow(bfeu_sup),length(intersect(bfeu_sup$windIDenv,bfau$windIDenv)) - length(intersect(bfeu_sup$windIDenv,bfau_sup$windIDenv)), nrow(bfau_sup), lower.tail = F, log.p = FALSE)
-
-##Number of windows, irrespective of environment associated with
-# total number of shared windows identified in any of the environments # total number of shared outlier windows, no rep among env
-phyper(length(intersect(bfna_sup$windID,bfeu_sup$windID))-1, length(levels(as.factor(bfna_sup$windID))),  length(intersect(bfna$windID,bfeu$windID)) - length(levels(as.factor(bfna_sup$windID))), length(levels(as.factor(bfeu_sup$windID))), lower.tail = F, log.p = FALSE) #NAEU
-phyper(length(intersect(bfna_sup$windID,bfau_sup$windID))-1, length(levels(as.factor(bfna_sup$windID))),  length(intersect(bfna$windID,bfau$windID)) - length(levels(as.factor(bfna_sup$windID))), length(levels(as.factor(bfau_sup$windID))), lower.tail = F, log.p = FALSE) #NAAU
-phyper(length(intersect(bfeu_sup$windID,bfau_sup$windID))-1, length(levels(as.factor(bfeu_sup$windID))),  length(intersect(bfeu$windID,bfau$windID)) - length(levels(as.factor(bfeu_sup$windID))), length(levels(as.factor(bfau_sup$windID))), lower.tail = F, log.p = FALSE) #EUAU
-
-##Number of windows xtx
-phyper(length(intersect(xna_sup$windID,xeu_sup$windID))-1, length(levels(as.factor(xna_sup$windID))),  length(intersect(xna$windID,xeu$windID)) - length(levels(as.factor(xna_sup$windID))), length(levels(as.factor(xeu_sup$windID))), lower.tail = F, log.p = FALSE) #NAEU
-phyper(length(intersect(xna_sup$windID,xau_sup$windID))-1, length(levels(as.factor(xna_sup$windID))),  length(intersect(xna$windID,xau$windID)) - length(levels(as.factor(xna_sup$windID))), length(levels(as.factor(xau_sup$windID))), lower.tail = F, log.p = FALSE) #NAAU
-phyper(length(intersect(xeu_sup$windID,xau_sup$windID))-1, length(levels(as.factor(xeu_sup$windID))),  length(intersect(xeu$windID,xau$windID)) - length(levels(as.factor(xeu_sup$windID))), length(levels(as.factor(xau_sup$windID))), lower.tail = F, log.p = FALSE) #EUAU
-```
-
-Based on binom and nullw
-```{r}
-bfn_NA = bfn_all %>% filter(Range=="nat") %>% droplevels()
-bfn_EU = bfn_all%>% filter( Range=="EU") %>% droplevels()
-bfn_AU = bfn_all%>% filter( Range=="AU")%>% droplevels() 
-bfn_bsup_NA = bfn_all%>% filter(qbinom=="yes"& Range=="nat") %>% droplevels()
-bfn_bsup_EU = bfn_all%>% filter(qbinom=="yes"& Range=="EU") %>% droplevels()
-bfn_bsup_AU = bfn_all%>% filter(qbinom=="yes"& Range=="AU")%>% droplevels() 
-
-bfn_sup_NA = bfn_all%>% filter(binnullw=="yes"& Range=="nat") %>% droplevels()
-bfn_sup_EU = bfn_all%>% filter(binnullw=="yes"& Range=="EU") %>% droplevels()
-bfn_sup_AU = bfn_all%>% filter(binnullw=="yes"& Range=="AU")%>% droplevels() 
-
-xn_NA = xn_all %>% filter(Range=="nat") %>% droplevels()
-xn_EU = xn_all%>% filter( Range=="EU") %>% droplevels()
-xn_AU = xn_all%>% filter( Range=="AU")%>% droplevels() 
-xn_bsup_NA = xn_all %>% filter(binom=="yes"& Range=="nat") %>% droplevels()
-xn_bsup_EU = xn_all%>% filter(binom=="yes"& Range=="EU") %>% droplevels()
-xn_bsup_AU = xn_all%>% filter(binom=="yes"& Range=="AU")%>% droplevels() 
-
-xn_sup_NA = xn_all%>% filter(binnullw=="yes"& Range=="nat") %>% droplevels()
-xn_sup_EU = xn_all%>% filter(binnullw=="yes"& Range=="EU") %>% droplevels()
-xn_sup_AU = xn_all%>% filter(binnullw=="yes"& Range=="AU")%>% droplevels() 
-# phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where q=size of outlier overlap-1; m=number of outlier windows range#1;  #n=(total number shared windows-m); k=number of outlier windows range#2.
-
-phyper(length(intersect(bfn_sup_NA$windID,bfn_sup_EU$windID))-1, length(levels(bfn_sup_NA$windID)),  length(intersect(bfna$windID,bfeu$windID)) - length(levels(bfn_sup_NA$windID)), length(levels(bfn_sup_EU$windID)), lower.tail = F, log.p = FALSE)
-phyper(length(intersect(bfn_sup_EU$windID,bfn_sup_AU$windID))-1, length(levels(bfn_sup_EU$windID)),  length(intersect(bfeu$windID,bfau$windID)) - length(levels(bfn_sup_EU$windID)), length(levels(bfn_sup_AU$windID)), lower.tail = F, log.p = FALSE)
-phyper(length(intersect(bfn_sup_NA$windID,bfn_sup_AU$windID))-1, length(levels(bfn_sup_NA$windID)),  length(intersect(bfna$windID,bfau$windID)) - length(levels(bfn_sup_NA$windID)), length(levels(bfn_sup_AU$windID)), lower.tail = F, log.p = FALSE)
-
-phyper(length(intersect(xn_sup_NA$windID,xn_sup_EU$windID))-1, length(levels(xn_sup_NA$windID)),  length(intersect(xna$windID,xeu$windID)) - length(levels(xn_sup_NA$windID)), length(levels(xn_sup_EU$windID)), lower.tail = F, log.p = FALSE)
-phyper(length(intersect(xn_sup_EU$windID,xn_sup_AU$windID))-1, length(levels(xn_sup_EU$windID)),  length(intersect(xeu$windID,xau$windID)) - length(levels(xn_sup_EU$windID)), length(levels(xn_sup_AU$windID)), lower.tail = F, log.p = FALSE)
-phyper(length(intersect(xn_sup_NA$windID,xn_sup_AU$windID))-1, length(levels(xn_sup_NA$windID)),  length(intersect(xna$windID,xau$windID)) - length(levels(xn_sup_NA$windID)), length(levels(xn_sup_AU$windID)), lower.tail = F, log.p = FALSE)
-```
-
-
-Window has to have hit in at least 2 methods within a range (based on binom AND nullw)
----
-```{r}
-bfn_sup_NAall = as.data.frame(levels(as.factor(bfn_sup_NA$windID)))
-colnames(bfn_sup_NAall) = "windID"
-bfxtx_sup_NA = inner_join(xn_sup_NA, bfn_sup_NAall, by="windID")
-bfn_sup_EUall = as.data.frame(levels(as.factor(bfn_sup_EU$windID)))
-colnames(bfn_sup_EUall) = "windID"
-bfxtx_sup_EU = inner_join(xn_sup_EU, bfn_sup_EUall, by="windID")
-bfn_sup_AUall = as.data.frame(levels(as.factor(bfn_sup_AU$windID)))
-colnames(bfn_sup_AUall) = "windID"
-bfxtx_sup_AU = inner_join(xn_sup_AU, bfn_sup_AUall, by="windID")
-
-bfgcta_sup_NA = inner_join(gcta, bfn_sup_NAall, by="windID")
-bfgcta_sup_EU = inner_join(gcta, bfn_sup_EUall, by="windID")
-bfgcta_sup_AU = inner_join(gcta, bfn_sup_AUall, by="windID")
-
-xgcta_sup_NA = inner_join(gcta, xn_sup_NA, by="windID")
-xgcta_sup_EU = inner_join(gcta, xn_sup_EU, by="windID")
-xgcta_sup_AU = inner_join(gcta, xn_sup_AU, by="windID")
-
-bfxtxgcta_sup_NA = select(inner_join(bfxtx_sup_NA, gcta, by="windID"), windID)
-bfxtxgcta_sup_EU = select(inner_join(bfxtx_sup_EU, gcta, by="windID"), windID)
-bfxtxgcta_sup_AU = select(inner_join(bfxtx_sup_AU, gcta, by="windID"), windID)
-```
-
-Test
----
-
-```{r}
-#EAA-XTX
-phyper(length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID))-1, length(levels(as.factor(bfxtx_sup_NA$windID))),  length(intersect(bfna$windID,bfeu$windID)) - length(levels(as.factor(bfxtx_sup_NA$windID))), length(levels(as.factor(bfxtx_sup_EU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_NAEU
-phyper(length(intersect(bfxtx_sup_EU$windID,bfxtx_sup_AU$windID))-1, length(levels(as.factor(bfxtx_sup_EU$windID))),  length(intersect(bfeu$windID,bfau$windID)) - length(levels(as.factor(bfxtx_sup_EU$windID))), length(levels(as.factor(bfxtx_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_EUAU
-phyper(length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_AU$windID))-1, length(levels(as.factor(bfxtx_sup_NA$windID))),  length(intersect(bfna$windID,bfau$windID)) - length(levels(as.factor(bfxtx_sup_NA$windID))), length(levels(as.factor(bfxtx_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_NAAU
-
-#EAA-GCTA
-phyper(length(intersect(bfgcta_sup_NA$windID,bfgcta_sup_EU$windID))-1, length(levels(as.factor(bfgcta_sup_NA$windID))), length(intersect(intersect(bfna$windID,gcta_allwind$windID),bfeu$windID)) - length(levels(as.factor(bfgcta_sup_NA$windID))), length(levels(as.factor(bfgcta_sup_EU$windID))), lower.tail = F, log.p = FALSE) 
-phyper(length(intersect(bfgcta_sup_EU$windID,bfgcta_sup_AU$windID))-1, length(levels(as.factor(bfgcta_sup_EU$windID))),  length(intersect(intersect(gcta_allwind$windID,bfau$windID),bfeu$windID))  - length(levels(as.factor(bfgcta_sup_EU$windID))), length(levels(as.factor(bfgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfgcta_EUAU
-phyper(length(intersect(bfgcta_sup_NA$windID,bfgcta_sup_AU$windID))-1, length(levels(as.factor(bfgcta_sup_NA$windID))),  length(intersect(intersect(gcta_allwind$windID,bfau$windID),bfna$windID)) - length(levels(as.factor(bfgcta_sup_NA$windID))), length(levels(as.factor(bfgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfgcta_NAAU
-
-#xtx-GCTA
-phyper(length(intersect(xgcta_sup_NA$windID,xgcta_sup_EU$windID))-1, length(levels(as.factor(xgcta_sup_NA$windID))), length(intersect(intersect(xna$windID,gcta_allwind$windID),xeu$windID)) - length(levels(as.factor(xgcta_sup_NA$windID))), length(levels(as.factor(xgcta_sup_EU$windID))), lower.tail = F, log.p = FALSE) 
-phyper(length(intersect(xgcta_sup_EU$windID,xgcta_sup_AU$windID))-1, length(levels(as.factor(xgcta_sup_EU$windID))),  length(intersect(intersect(gcta_allwind$windID,xau$windID),xeu$windID))  - length(levels(as.factor(xgcta_sup_EU$windID))), length(levels(as.factor(xgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_EUAU
-phyper(length(intersect(xgcta_sup_NA$windID,xgcta_sup_AU$windID))-1, length(levels(as.factor(xgcta_sup_NA$windID))),  length(intersect(intersect(gcta_allwind$windID,xau$windID),xna$windID)) - length(levels(as.factor(xgcta_sup_NA$windID))), length(levels(as.factor(xgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_NAAU
-
-#all
-phyper(length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_EU$windID))-1, length(levels(as.factor(bfxtxgcta_sup_NA$windID))), length(intersect(intersect(xna$windID,gcta_allwind$windID),xeu$windID)) - length(levels(as.factor(bfxtxgcta_sup_NA$windID))), length(levels(as.factor(bfxtxgcta_sup_EU$windID))), lower.tail = F, log.p = FALSE) 
-phyper(length(intersect(bfxtxgcta_sup_EU$windID,bfxtxgcta_sup_AU$windID))-1, length(levels(as.factor(bfxtxgcta_sup_EU$windID))),  length(intersect(intersect(gcta_allwind$windID,xau$windID),xeu$windID))  - length(levels(as.factor(bfxtxgcta_sup_EU$windID))), length(levels(as.factor(bfxtxgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_EUAU
-phyper(length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_AU$windID))-1, length(levels(as.factor(bfxtxgcta_sup_NA$windID))),  length(intersect(intersect(gcta_allwind$windID,xau$windID),xna$windID)) - length(levels(as.factor(bfxtxgcta_sup_NA$windID))), length(levels(as.factor(bfxtxgcta_sup_AU$windID))), lower.tail = F, log.p = FALSE) #xgcta_NAAU
-```
-
-Plot
-```{r}
-#all
-area1 = length(levels(as.factor(bfxtxgcta_sup_NA$windID)))
-area2= length(levels(as.factor(bfxtxgcta_sup_EU$windID)))
-area3= length(levels(as.factor(bfxtxgcta_sup_AU$windID)))
-n12 = length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_EU$windID))
-n23 = length(intersect(bfxtxgcta_sup_EU$windID,bfxtxgcta_sup_AU$windID))
-n13 = length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_AU$windID))
-n123 = length(intersect(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_EU$windID), bfxtxgcta_sup_AU$windID))
-pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/venn_bfxtxgcta.pdf")
-draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
-alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
-cat.pos = 0, cat.dist = 0.07,margin = 0.2)
-dev.off()
-
-#x-gcta
-area1 = length(levels(as.factor(xgcta_sup_NA$windID)))
-area2= length(levels(as.factor(xgcta_sup_EU$windID)))
-area3= length(levels(as.factor(xgcta_sup_AU$windID)))
-n12 = length(intersect(xgcta_sup_NA$windID,xgcta_sup_EU$windID))
-n23 = length(intersect(xgcta_sup_EU$windID,xgcta_sup_AU$windID))
-n13 = length(intersect(xgcta_sup_NA$windID,xgcta_sup_AU$windID))
-n123 = length(intersect(intersect(xgcta_sup_NA$windID,xgcta_sup_EU$windID), xgcta_sup_AU$windID))
-pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/venn_xtxgcta.pdf")
-draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
-alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
-cat.pos = 0, cat.dist = 0.07,margin = 0.2)
-dev.off()
-
-#eaa-gcta
-area1 = length(levels(as.factor(bfgcta_sup_NA$windID)))
-area2= length(levels(as.factor(bfgcta_sup_EU$windID)))
-area3= length(levels(as.factor(bfgcta_sup_AU$windID)))
-n12 = length(intersect(bfgcta_sup_NA$windID,bfgcta_sup_EU$windID))
-n23 = length(intersect(bfgcta_sup_EU$windID,bfgcta_sup_AU$windID))
-n13 = length(intersect(bfgcta_sup_NA$windID,bfgcta_sup_AU$windID))
-n123 = length(intersect(intersect(bfgcta_sup_NA$windID,bfgcta_sup_EU$windID), bfgcta_sup_AU$windID))
-pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/venn_eaagcta.pdf")
-draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
-alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
-cat.pos = 0, cat.dist = 0.07,margin = 0.2)
-dev.off()
-
-#eaa-xtx
-area1 = length(levels(as.factor(bfxtx_sup_NA$windID)))
-area2= length(levels(as.factor(bfxtx_sup_EU$windID)))
-area3= length(levels(as.factor(bfxtx_sup_AU$windID)))
-n12 = length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID))
-n23 = length(intersect(bfxtx_sup_EU$windID,bfxtx_sup_AU$windID))
-n13 = length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_AU$windID))
-n123 = length(intersect(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID), bfxtx_sup_AU$windID))
-pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/venn_eaaxtx.pdf")
-draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
-alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
-cat.pos = 0, cat.dist = 0.07,margin = 0.2)
-dev.off()
-
-```
-
 other plot
 ```{r}
-##ALl windows EAA (repeat among env)
-area1 = length(levels(as.factor(bfna$windIDenv)))
-area2= length(levels(as.factor(bfeu$windIDenv)))
-area3= length(levels(as.factor(bfau$windIDenv)))
-n12 = length(intersect(bfna$windIDenv,bfeu$windIDenv))
-n23 = length(intersect(bfeu$windIDenv,bfau$windIDenv))
-n13 = length(intersect(bfna$windIDenv,bfau$windIDenv))
-n123 = length(intersect(intersect(bfna$windIDenv,bfeu$windIDenv), bfau$windIDenv))
-
-draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
-alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
-cat.pos = 0, cat.dist = 0.07, rotation.degree = 270,
-margin = 0.2)
 
 ##ALl windows EAA (no repeat among env)
 area1 = length(levels(as.factor(bfna$windID)))
