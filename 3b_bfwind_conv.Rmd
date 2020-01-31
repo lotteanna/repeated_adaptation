@@ -1,21 +1,21 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 Convergence between outlier windows
 ===  
 
 > Script by Lotte van Boheemen  
 
 Below code will calculating the number of outliers per sliding window as follows:  
-#- Exlude windows without outlier SNPs (Yeaman & Hodgins et al. 2016)
+- Exlude windows without outlier SNPs (Yeaman & Hodgins et al. 2016)
 - Calculate the expected frequency of outlier SNPs per number of SNPs in a window:  p = ∑_i(a_i/n_i) (for each range) (Yeaman & Hodgins et al. 2016)
 - Calculate the upper 90% CI of the binomial distribution (for each range)
 - Check which windows fall 90% CI of the binomial distribution (for each range): top-candidate-outlier windows
 - Check overlap in top-candidate-outlier windows between ranges
 
 ---  
-
-> Update 1-7-16: Code includes qbinom estimates and plots to the same graphs
-> Update 4-8-16: Code excludes non-outlier windows post analysis
-> Update 3-9-16: Code reports qbinom outliers as topcandidates (opposed to CI95 outliers)
-> Update 11-7-17: Transformed for melted data (all environmental variables)
 
 ```{r, include=F}
 library("tidyverse")
@@ -25,10 +25,10 @@ library(binom)
 
 Read in data
 ```{r}
-results_testall <- read.table("bf_all_1000-1000_bf99_50miss_allwinds", header=T)
-results_testna <- read.table("bfall_na_1000_bf99_50miss_allwinds", header=T)
-results_testeu <- read.table("bfall_eu_1000_bf99_50miss_allwinds", header=T)
-results_testau <- read.table("bfall_au_1000_bf99_50miss_allwinds", header=T)
+
+results_testna <- read.table("bfall_na_1000_bf993_90miss", header=T)
+results_testeu <- read.table("bfall_eu_1000_bf993_90miss", header=T)
+results_testau <- read.table("bfall_au_1000_bf993_90miss", header=T)
 ```
 
 ---   
@@ -48,7 +48,7 @@ topcan.binom <- function(dat, output){
 
   #Calculate the expected frequency of outlier SNPs per number of SNPs in a window:  p = ∑_i(a_i/n_i)  
   totsnp1 <- sum(sdat$num.SNPs)
-  totout1 <- sum(sdat$num.outlier)
+  totout1 <- sum(sdat$num.BF3top1outier)
   expect1 <- (totout1 / totsnp1)
 
     # calculate quantiles
@@ -56,7 +56,7 @@ topcan.binom <- function(dat, output){
 
   # Check which windows fall above the expected quantile distribution (for each range): top-candidate-outlier windows
   
-  sdat$topcan_q <- (sdat$p3 <= sdat$num.outlier) & (sdat$num.outlier > 1) # change 4-9-16: only call topcan when >1 outlier
+  sdat$topcan_q <- (sdat$p3 <= sdat$num.BF3top1outier) & (sdat$num.BF3top1outier > 1) # change 4-9-16: only call topcan when >1 outlier
   
   coverage <- matrix(NA, nrow=length(n), 1)
   q.upper <- matrix(NA, 1, nrow=length(n))
@@ -82,73 +82,11 @@ topcan.binom <- function(dat, output){
 ```
 
 ```{r}
-topcan.binom(results_testall, "sresbfall_all_1000_99_50miss_allwind.txt")
-topcan.binom(results_testna, "sresbfall_na_1000_99_50miss_allwind.txt")
-topcan.binom(results_testeu, "sresbfall_eu_1000_99_50miss_allwind.txt")
-topcan.binom(results_testau, "sresbfall_au_1000_99_50miss_allwind.txt")
+topcan.binom(results_testna, "sresbfall_na_1000_993_90miss.txt")
+topcan.binom(results_testeu, "sresbfall_eu_1000_993_90miss.txt")
+topcan.binom(results_testau, "sresbfall_au_1000_993_90miss.txt")
 ```
 
-
-===
-
-**Overlap in top-candidate outlier windows between ranges**
-
-```{r}
-bf_all <- read.table("sresbfall_all_1000_99_50miss_allwind.txt")
-bf_na <- read.table("sresbfall_na_1000_99_50miss_allwind.txt")
-bf_eu <- read.table("sresbfall_eu_1000_99_50miss_allwind.txt")
-bf_au <- read.table("sresbfall_au_1000_99_50miss_allwind.txt")
-
-tc_all <- subset(bf_all, topcan_q == "TRUE")
-tc_all$sub1 <- paste(tc_all$contig, tc_all$win.start, sep="__")
-tc_all$sub2 <- paste(tc_all$envvar,tc_all$contig, tc_all$win.start, sep="__")
-
-tc_na <- subset(bf_na, topcan_q == "TRUE")
-tc_na$sub1 <- paste(tc_na$contig, tc_na$win.start, sep="__")
-tc_na$sub2 <- paste(tc_na$envvar,tc_na$contig, tc_na$win.start, sep="__")
-
-tc_eu <- subset(bf_eu, topcan_q == "TRUE")
-tc_eu$sub1 <- paste(tc_eu$contig, tc_eu$win.start, sep="__")
-tc_eu$sub2 <- paste(tc_eu$envvar,tc_eu$contig, tc_eu$win.start, sep="__")
-
-tc_au <- subset(bf_au, topcan_q == "TRUE")
-tc_au$sub1 <- paste(tc_au$contig, tc_au$win.start, sep="__")
-tc_au$sub2 <- paste(tc_au$envvar,tc_au$contig, tc_au$win.start, sep="__")
-
-# only compare between contigs (so between all env var) 
-sres_allna <- inner_join(tc_all, tc_na, by="sub1")
-sres_alleu <- inner_join(tc_all, tc_eu, by="sub1")
-sres_allau <- inner_join(tc_all, tc_au, by="sub1")
-
-sres_naeu <- inner_join(tc_na, tc_eu, by="sub1")
-sres_naau <- inner_join(tc_na, tc_au, by="sub1")
-sres_euau <- inner_join(tc_eu, tc_au, by="sub1")
-
-# only compare between contig within environmental variables, I just paste the environmental variable to the window name
-sres_allna2 <- inner_join(tc_all, tc_na, by="sub2")
-sres_alleu2 <- inner_join(tc_all, tc_eu, by="sub2")
-sres_allau2 <- inner_join(tc_all, tc_au, by="sub2")
-
-sres_naeu2 <- inner_join(tc_na, tc_eu, by="sub2")
-sres_naau2 <- inner_join(tc_na, tc_au, by="sub2")
-sres_euau2 <- inner_join(tc_eu, tc_au, by="sub2")
-
-write.table(sres_allna, "sresbfall_glna_1000_99_50miss_allwind_crossenvvar.txt")
-write.table(sres_alleu, "sresbfall_gleu_1000_99_50miss_allwind_crossenvvar.txt")
-write.table(sres_allau, "sresbfall_glau_1000_99_50miss_allwind_crossenvvar.txt")
-
-write.table(sres_naeu, "sresbfall_naeu_1000_99_50miss_allwind_crossenvvar.txt")
-write.table(sres_naau, "sresbfall_naau_1000_99_50miss_allwind_crossenvvar.txt")
-write.table(sres_euau, "sresbfall_euau_1000_99_50miss_allwind_crossenvvar.txt")
-
-write.table(sres_allna2, "sresbfall_glna_1000_99_50miss_allwind_perenvvar.txt")
-write.table(sres_alleu2, "sresbfall_gleu_1000_99_50miss_allwind_perenvvar.txt")
-write.table(sres_allau2, "sresbfall_glau_1000_99_50miss_allwind_perenvvar.txt")
-
-write.table(sres_naeu2, "sresbfall_naeu_1000_99_50miss_allwind_perenvvar.txt")
-write.table(sres_naau2, "sresbfall_naau_1000_99_50miss_allwind_perenvvar.txt")
-write.table(sres_euau2, "sresbfall_euau_1000_99_50miss_allwind_perenvvar.txt")
-```
 
 
 ---  

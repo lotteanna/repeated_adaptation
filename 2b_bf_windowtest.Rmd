@@ -341,8 +341,42 @@ outlier.window(mdata4_bio9, "bfbio9_au_1000-1000_bf993_allwinds",0.99)
 ```
 
 
+Concatenate all files
 
-Call function for the different datasets
+```{r}
+list.files(pattern ="na_1000-1000_bf993_allwinds$") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_na_1000_bf993_90miss")
+
+list.files(pattern ="na_1000-1000_bf993_allwinds_SNPinfo") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_na_1000_bf993_90miss_SNPinfo")
+
+list.files(pattern ="eu_1000-1000_bf993_allwinds$") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_eu_1000_bf993_90miss")
+
+list.files(pattern ="eu_1000-1000_bf993_allwinds_SNPinfo") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_eu_1000_bf993_90miss_SNPinfo")
+
+list.files(pattern ="au_1000-1000_bf993_allwinds$") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_au_1000_bf993_90miss")
+
+list.files(pattern ="au_1000-1000_bf993_allwinds_SNPinfo") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_au_1000_bf993_90miss_SNPinfo")
+
+```
+
+Call function for the different datasets, all environment variables (takes very long as memory gets exhausted)
 
 ```{r}
 outlier.window(mdata2, "bfall_na_1000-1000_bf993_90miss",0.99)
