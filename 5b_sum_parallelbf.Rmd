@@ -18,7 +18,7 @@ library("tidyverse")
 ```
 
 ```{r}
-full <- read.table("bigdataperenv_bf2_1000_99logbf2_70miss_allwin_all10K.txt", header=T)
+full <- read.table("bigdataperenv_bf2_1000_99logbf3_90miss_allwin_all10K.txt", header=T)
 
 outEUinNA <- full[which(full$comp=="outEUinNA"),]
 outAUinNA <- full[which(full$comp=="outAUinNA"),]
@@ -50,9 +50,9 @@ windW3 <- full_join(windW2, sub_outNAinEU, by = "windID")
 windW4 <- full_join(windW3, sub_outEUinAU, by = "windID") 
 windW_all <- full_join(windW4, sub_outNAinAU, by = "windID") 
 
-windna <- read.table("sresbfall_na_1000_99_70miss_allwind.txt", header = T)
-windeu <- read.table("sresbfall_eu_1000_99_70miss_allwind.txt", header = T)
-windau <- read.table("sresbfall_au_1000_99_70miss_allwind.txt", header = T)
+windna <- read.table("sresbfall_na_1000_993_90miss.txt", header = T)
+windeu <- read.table("sresbfall_eu_1000_993_90miss.txt", header = T)
+windau <- read.table("sresbfall_au_1000_993_90miss.txt", header = T)
 
 windna$windID <- paste(windna$contig, windna$win.start, windna$win.end, windna$envvar, sep="__")
 windeu$windID <- paste(windeu$contig, windeu$win.start, windeu$win.end, windeu$envvar, sep="__")
@@ -77,7 +77,7 @@ all_all2 <- full_join(all_all1, sub_all_au, by = "windID")
 
 all_windows <- inner_join(all_all2, windW_all, by ="windID")
 
-write.table(all_windows,"bfall_windows_1000_99_allwind_par_70miss.txt")
+write.table(all_windows,"bfall_windows_1000_993_par_90miss.txt")
 
 
 ```
@@ -90,7 +90,7 @@ df <- select(all_windows, windID)
 df <- separate(data = df, col = windID, into = c("contig", "right"), sep = "\\__")
 
 windows <- left_join(df, cdata, by = "contig")
-write.table(windows,"all_windows_1000_99_allwind_info_70miss.txt")
+write.table(windows,"all_windows_1000_993_info_90miss.txt")
 ```
 
 ##END SCRIPT##

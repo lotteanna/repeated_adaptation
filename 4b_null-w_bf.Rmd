@@ -39,15 +39,15 @@ allwind_au$windID  <- paste(allwind_au$contig, allwind_au$win.start, allwind_au$
 
 Step 2: compare the bf values of the 10000 random SNPs with the non-superoutlier bf values for each window using a Wilcox test
 ```{r}
-  super_na <- subset(allwind_na, topcan_q=="TRUE") #only select outlier windows
-  backgroundSNP_na <- anti_join(snp_allwindow_na,super_na, by = "windID") # all SNPs (+info) NOT in a outlier window
-  nonout_win_na <- subset(allwind_na, topcan_q=="FALSE") #all non-outlier windows
-  set.seed (12345)
-  indsamp_na <- rowSums (is.na(backgroundSNP_na)) # counts the number of NA per row
-  which_na <- which (indsamp_na== 0) # select rows which have no NA                  
-  subsampled1K_na <- backgroundSNP_na[sample(which_na,10000,replace = F),]
-  nulldist1 <- array (NA,c(length(nonout_win_na$windID),2))
-   for (i in 1:length(nonout_win_na$windID)){
+super_na <- subset(allwind_na, topcan_q=="TRUE") #only select outlier windows
+backgroundSNP_na <- anti_join(snp_allwindow_na,super_na, by = "windID") # all SNPs (+info) NOT in a outlier window
+nonout_win_na <- subset(allwind_na, topcan_q=="FALSE") #all non-outlier windows
+set.seed (12345)
+indsamp_na <- rowSums (is.na(backgroundSNP_na)) # counts the number of NA per row
+which_na <- which (indsamp_na== 0) # select rows which have no NA                  
+subsampled1K_na <- backgroundSNP_na[sample(which_na,10000,replace = F),]
+nulldist1 <- array (NA,c(length(nonout_win_na$windID),2))
+for (i in 1:length(nonout_win_na$windID)){
 #for(i in 1:100){
       ind1 <- which (backgroundSNP_na$windID == nonout_win_na$windID[i]) # loop through each non-outlier window to get the info (eg Latitude bf)
       sub1 <- backgroundSNP_na[ind1, "BF"] # the fourth column here are the envvar bf values
@@ -62,7 +62,7 @@ Step 2: compare the bf values of the 10000 random SNPs with the non-superoutlier
 ```
 
 ```{r}
-  super_eu <- subset(allwind_eu, topcan_q=="TRUE") #only select outlier windows
+super_eu <- subset(allwind_eu, topcan_q=="TRUE") #only select outlier windows
   backgroundSNP_eu <- anti_join(snp_allwindow_eu,super_eu, by = "windID") # all SNPs (+info) NOT in a outlier window
   nonout_win_eu <- subset(allwind_eu, topcan_q=="FALSE") #all non-outlier windows
   set.seed (12345)

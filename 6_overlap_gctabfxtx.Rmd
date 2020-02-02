@@ -11,13 +11,15 @@ library("tidyverse")
 library("reshape")#melt
 library("car") #Anova
 library(gdata)
+library(VennDiagram)
 ```
 
 Calculate probability of overlap
 ---
 ```{r}
-bfn_all = read.table("bf_50miss_redo/mbf_1000_99_binnullW_50miss.txt", header=T)
-xn_all = read.table("xtx_50miss_redo/mxtx_1000_99_binnullW.txt", header=T)
+bfn_all = read.table("bf_90miss_99bf3/mbf_1000_993_binnullW_90miss.txt", header=T)
+xn_all = read.table("xtx_1000_99_allwind/mxtx_1000_99_binnullW.txt", header=T) %>% 
+  mutate(Range = tolower(Range))
 
 gcta_allwind = read.table("gcta_1000_allwind/gcta_all_1000-1000_top99_allwinds", header=T)
 gcta_allwind$windID = paste0(gcta_allwind$contig,"__",gcta_allwind$win.start)
@@ -30,6 +32,18 @@ gcta$windID = paste0(gcta$contig,"__",gcta$win.start)
 Subset data with either binom or nullw outliers
 
 ```{r}
+bfna <- bfn_all%>% 
+  filter(Range=="nat") %>% 
+  droplevels()
+
+bfeu <- bfn_all%>% 
+  filter(Range=="eu") %>% 
+  droplevels()
+
+bfau <- bfn_all%>% 
+  filter(Range=="au") %>% 
+  droplevels()
+
 bfn_sup_NA <- bfn_all%>% 
   filter(binnullw=="yes"& Range=="nat") %>% 
   droplevels()
@@ -85,7 +99,9 @@ Test
 ```{r}
 #EAA-XTX
 phyper(length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID))-1, length(levels(as.factor(bfxtx_sup_NA$windID))),  length(intersect(bfna$windID,bfeu$windID)) - length(levels(as.factor(bfxtx_sup_NA$windID))), length(levels(as.factor(bfxtx_sup_EU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_NAEU
+
 phyper(length(intersect(bfxtx_sup_EU$windID,bfxtx_sup_AU$windID))-1, length(levels(as.factor(bfxtx_sup_EU$windID))),  length(intersect(bfeu$windID,bfau$windID)) - length(levels(as.factor(bfxtx_sup_EU$windID))), length(levels(as.factor(bfxtx_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_EUAU
+
 phyper(length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_AU$windID))-1, length(levels(as.factor(bfxtx_sup_NA$windID))),  length(intersect(bfna$windID,bfau$windID)) - length(levels(as.factor(bfxtx_sup_NA$windID))), length(levels(as.factor(bfxtx_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_NAAU
 
 ```
@@ -115,7 +131,126 @@ n12 = length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_EU$windID))
 n23 = length(intersect(bfxtxgcta_sup_EU$windID,bfxtxgcta_sup_AU$windID))
 n13 = length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_AU$windID))
 n123 = length(intersect(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_EU$windID), bfxtxgcta_sup_AU$windID))
-pdf("~/Documents/Monash/PhD/Analyses/Data/_Graph/venn_bfxtxgcta.pdf")
+draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
+alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
+cat.pos = 0, cat.dist = 0.07,margin = 0.2)
+
+
+```
+
+
+PEA env
+
+```{r}
+PEAenv <- c("Longitude", "Latitude", "bio1", "bio2","bio5", "bio10", "bio11")
+bfn_PEA <- bfn_all %>% 
+  filter(env %in% PEAenv)
+
+```
+
+
+Subset data with either binom or nullw outliers
+
+```{r}
+bfna <- bfn_PEA%>% 
+  filter(Range=="nat") %>% 
+  droplevels()
+
+bfeu <- bfn_PEA%>% 
+  filter(Range=="eu") %>% 
+  droplevels()
+
+bfau <- bfn_PEA%>% 
+  filter(Range=="au") %>% 
+  droplevels()
+
+bfn_sup_NA <- bfn_PEA%>% 
+  filter(binnullw=="yes"& Range=="nat") %>% 
+  droplevels()
+
+bfn_sup_EU <- bfn_PEA%>% 
+  filter(binnullw=="yes"& Range=="eu") %>% 
+  droplevels()
+
+bfn_sup_AU <- bfn_PEA%>% 
+  filter(binnullw=="yes"& Range=="au") %>% 
+  droplevels() 
+
+xn_sup_NA <- xn_all %>% 
+  filter(binnullw=="yes"& Range=="nat") %>% 
+  droplevels()
+
+xn_sup_EU <- xn_all %>% 
+  filter(binnullw=="yes"& Range=="eu") %>%
+  droplevels()
+
+xn_sup_AU <-xn_all %>% 
+  filter(binnullw=="yes"& Range=="au")%>% 
+  droplevels() 
+```
+
+
+Window has to have hit in both XtX AND EAA within a range (based on binom or nullw)
+
+```{r}
+bfn_sup_NAall = as.data.frame(levels(as.factor(bfn_sup_NA$windID)))
+colnames(bfn_sup_NAall) = "windID"
+
+bfxtx_sup_NA = inner_join(xn_sup_NA, bfn_sup_NAall, by="windID")
+
+bfn_sup_EUall = as.data.frame(levels(as.factor(bfn_sup_EU$windID)))
+colnames(bfn_sup_EUall) = "windID"
+
+bfxtx_sup_EU = inner_join(xn_sup_EU, bfn_sup_EUall, by="windID")
+
+bfn_sup_AUall = as.data.frame(levels(as.factor(bfn_sup_AU$windID)))
+colnames(bfn_sup_AUall) = "windID"
+
+bfxtx_sup_AU = inner_join(xn_sup_AU, bfn_sup_AUall, by="windID")
+
+bfxtxgcta_sup_NA = select(inner_join(bfxtx_sup_NA, gcta, by="windID"), windID)
+bfxtxgcta_sup_EU = select(inner_join(bfxtx_sup_EU, gcta, by="windID"), windID)
+bfxtxgcta_sup_AU = select(inner_join(bfxtx_sup_AU, gcta, by="windID"), windID)
+```
+
+Test
+---
+
+```{r}
+#EAA-XTX
+phyper(length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID))-1, length(levels(as.factor(bfxtx_sup_NA$windID))),  length(intersect(bfna$windID,bfeu$windID)) - length(levels(as.factor(bfxtx_sup_NA$windID))), length(levels(as.factor(bfxtx_sup_EU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_NAEU
+
+phyper(length(intersect(bfxtx_sup_EU$windID,bfxtx_sup_AU$windID))-1, length(levels(as.factor(bfxtx_sup_EU$windID))),  length(intersect(bfeu$windID,bfau$windID)) - length(levels(as.factor(bfxtx_sup_EU$windID))), length(levels(as.factor(bfxtx_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_EUAU
+
+phyper(length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_AU$windID))-1, length(levels(as.factor(bfxtx_sup_NA$windID))),  length(intersect(bfna$windID,bfau$windID)) - length(levels(as.factor(bfxtx_sup_NA$windID))), length(levels(as.factor(bfxtx_sup_AU$windID))), lower.tail = F, log.p = FALSE) #bfxtx_NAAU
+
+```
+
+Plot
+```{r}
+
+#eaa-xtx
+area1 = length(levels(as.factor(bfxtx_sup_NA$windID)))
+area2= length(levels(as.factor(bfxtx_sup_EU$windID)))
+area3= length(levels(as.factor(bfxtx_sup_AU$windID)))
+n12 = length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID))
+n23 = length(intersect(bfxtx_sup_EU$windID,bfxtx_sup_AU$windID))
+n13 = length(intersect(bfxtx_sup_NA$windID,bfxtx_sup_AU$windID))
+n123 = length(intersect(intersect(bfxtx_sup_NA$windID,bfxtx_sup_EU$windID), bfxtx_sup_AU$windID))
+pdf("venn_eaaxtx_PEA.pdf")
+draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
+alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
+cat.pos = 0, cat.dist = 0.07,margin = 0.2)
+dev.off()
+
+#all
+area1 = length(levels(as.factor(bfxtxgcta_sup_NA$windID)))
+area2= length(levels(as.factor(bfxtxgcta_sup_EU$windID)))
+area3= length(levels(as.factor(bfxtxgcta_sup_AU$windID)))
+n12 = length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_EU$windID))
+n23 = length(intersect(bfxtxgcta_sup_EU$windID,bfxtxgcta_sup_AU$windID))
+n13 = length(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_AU$windID))
+n123 = length(intersect(intersect(bfxtxgcta_sup_NA$windID,bfxtxgcta_sup_EU$windID), bfxtxgcta_sup_AU$windID))
 draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
 alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
 cat.pos = 0, cat.dist = 0.07,margin = 0.2)
@@ -124,793 +259,214 @@ dev.off()
 
 ```
 
-Do GCTA windows associated with traits show signs of selection
-```{r}
-xwind_na = select(xna_sup,windID)
-xwind_eu = select(xeu_sup,windID)
-xwind_au = select(xau_sup,windID)
-xwind_all  = rbind(xwind_na, xwind_eu, xwind_au)
-wind_alluq = unique(xwind_all)
+===
 
-#all common xtx windows
-xallwinds = as.data.frame(intersect(intersect(xna$windID, xeu$windID), xau$windID))
-colnames(xallwinds) = "windID"
-
-
-bwind_na = select(bfna_sup,windID)
-bwind_eu = select(bfeu_sup,windID)
-bwind_au = select(bfau_sup,windID)
-bwind_all  = rbind(bwind_na, bwind_eu, bwind_au)
-wind_balluq = unique(bwind_all)
-
-ballwinds = as.data.frame(unique(intersect(intersect(bfna$windID, bfeu$windID), bfau$windID)))
-colnames(ballwinds) = "windID"
-
-# phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where q=size of outlier overlap-1; m=number of outlier windows method#1;  #n=(total number shared windows-m); k=number of outlier windows range#2.
-phyper(length(intersect(wind_balluq$windID,unique(gcta$windID)))-1 ,nrow((wind_balluq)),  length(intersect(unique(ballwinds$windID), unique(gcta_allwind$windID))) - nrow((wind_balluq)),length(unique(gcta$windID)), lower.tail = F, log.p = FALSE)
-
-```
-
-other plot
-```{r}
-
-##ALl windows EAA (no repeat among env)
-area1 = length(levels(as.factor(bfna$windID)))
-area2= length(levels(as.factor(bfeu$windID)))
-area3= length(levels(as.factor(bfau$windID)))
-n12 = length(intersect(levels(as.factor(bfna$windID)),levels(as.factor(bfeu$windID))))
-n23 =  length(intersect(levels(as.factor(bfeu$windID)),levels(as.factor(bfau$windID))))
-n13 = length(intersect(levels(as.factor(bfna$windID)),levels(as.factor(bfau$windID))))
-n123 = length(intersect(intersect(levels(as.factor(bfna$windID)),levels(as.factor(bfeu$windID))), levels(as.factor(bfau$windID))))
-
-draw.triple.venn(area1, area2, area3, n12, n23, n13, n123, col = "transparent", fill = c("cornflowerblue","green","red"),
-alpha = 0.50, cex = 1.5, fontface = "bold",cat.cex = 1.5,
-cat.pos = 0, cat.dist = 0.07, rotation.degree = 270,
-margin = 0.2)
-
-
-
-```
-
-```{r}
-#Number of common windows among env between ranges bf
-dat_bfna = dat_bf %>% filter(range=="na") %>% droplevels()
-dat_bfeu = dat_bf %>% filter(range=="eu") %>% droplevels()
-dat_bfau = dat_bf %>% filter(range=="au") %>% droplevels()
-
-a = length(intersect(levels(dat_bfna$windID),levels(dat_bfeu$windID))) # number of shared outlier windows
-b = length(intersect(levels(dat_bfna$windID),levels(dat_bfau$windID)))
-c = length(intersect(dat_bfeu$windID,dat_bfau$windID))
-d = length(intersect(intersect(dat_bfna$windID,dat_bfau$windID), dat_bfeu$windID))
-
-
-bfna = read.table("bfall_na_500-500_bf99", header=T)
-bfna$windID = paste0(bfna$contig,"__",bfna$win.start,"__",bfna$win.end )
-bfeu = read.table("bfall_eu_500-500_bf99", header=T)
-bfeu$windID = paste0(bfeu$contig,"__",bfeu$win.start,"__", bfeu$win.end)
-bfau = read.table("bfall_au_500-500_bf99", header=T)
-bfau$windID = paste0(bfau$contig,"__",bfau$win.start,"__", bfau$win.end)
-
-# total number of  windows
-length(levels(as.factor(bfna$windID))) 
-length(levels(as.factor(bfeu$windID))) 
-length(levels(as.factor(bfau$windID))) 
-
-# total number of outlier windows
-length(levels(as.factor(dat_bfna$windID))) 
-length(levels(as.factor(dat_bfeu$windID))) 
-length(levels(as.factor(dat_bfau$windID))) 
-
- length(intersect(bfna$windID,bfeu$windID)) # total number of shared windows
- length(intersect(bfna$windID,bfau$windID)) # total number of shared windows
- length(intersect(bfeu$windID,bfau$windID)) # total number of shared windows
- 
-
-
-
- phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE)
-
-#where q=size of overlap-1; m=number of outlier windows range#1; 
- #n=(total number shared windows-m); k=number of outlier windows range#2.
-
-phyper(735, 3320, 404332 , 2796, lower.tail = F, log.p = FALSE)
-phyper(586, 3320, 365600 , 2603, lower.tail = F, log.p = FALSE)
-phyper(568, 2797, 368976 , 2603, lower.tail = F, log.p = FALSE)
-
-#to check what the cut-off for overlap was:
-phyper(31, 3320, 404332 , 2796, lower.tail = F, log.p = FALSE)
-```
-
-
-Test if number of outlier windows is significantly different between range pairs
-
-```{r}
-prop.test(x = c(151, 152 ), n = c(15516, 15378)) #NA vs EU xtx
-prop.test(x = c(151, 135 ), n = c(15516, 15090)) #NA vs AU xtx
-prop.test(x = c(152, 135 ), n = c(15378, 15090)) #EU vs AU xtx
-p.adjust(c(0.9377,0.5127,0.4307), method='fdr')
-
-prop.test(x = c(843, 1161 ), n = c(15516, 15378)) #NA vs EU eaa
-prop.test(x = c(843, 952 ), n = c(15516, 15090)) #NA vs AU eaa
-prop.test(x = c(1161, 952 ), n = c(15378, 15090)) #EU vs AU eaa
-p.adjust(c(5.09e-14,0.001215,2.232e-05), method='fdr')
-```
-
-
-Test number of outlier SNPs and outlier windows and test departures for expected distributions
----
-
-Read data
-```{r}
-datgl=read.table("bf_all_1000-1000_bf99_allwinds_SNPinfo", header=T)
-datna=read.table("bfall_na_1000_bf99_allwinds_SNPinfo", header=T)
-dateu=read.table("bfall_eu_1000_bf99_allwinds_SNPinfo", header=T)
-datau=read.table("bfall_au_1000_bf99_allwinds_SNPinfo", header=T)
-wind_gl = read.table("sresbfall_all_1000_99_allwind.txt", header=T)
-wind_na = read.table("sresbfall_na_1000_99_allwind.txt", header=T)
-wind_eu = read.table("sresbfall_eu_1000_99_allwind.txt", header=T)
-wind_au = read.table("sresbfall_au_1000_99_allwind.txt", header=T)
-```
-
-
-
-Number of SNPs GL
-```{r}
-supgl = datgl %>% filter(rank>=0.99) %>% droplevels()
-envsnp_gl = count(supgl, envvar)
-
-supgl$SNPID = paste0(supgl$contig,"__", supgl$location)
-length(levels(as.factor(supgl$SNPID)))#get only uniq SNPs across env
-length(as.factor(supgl$SNPID))#get all outlier SNPs
-
-chisq.test(envsnp_gl[,2])
-
-resultssnp_gl=data.frame(envvar=as.numeric(), pval=as.numeric())
-for(i in 1:length(levels(envsnp_gl$envvar))){
-bin = binom.test(envsnp_gl$n[[i]], sum(envsnp_gl$n),1/length(levels (as.factor (envsnp_gl$envvar))), alternative="greater")
-resultssnp_gl[i,1] =  levels(envsnp_gl$envvar)[[i]]
-resultssnp_gl[i,2] =  bin$p.value
-}
-resultssnp_gl$q = p.adjust(resultssnp_gl$pval)
-```
-
-Number of SNPs NA
-```{r}
-supna = datna %>% filter(rank>=0.99) %>% droplevels()
-envsnp_na = count(supna, envvar)
-
-supna$SNPID = paste0(supna$contig,"__", supna$location)
-length(levels(as.factor(supna$SNPID)))#get only uniq SNPs across env
-length(as.factor(supna$SNPID))#get all outlier SNPs
-
-chisq.test(envsnp_na[,2])
-
-resultssnp_na=data.frame(envvar=as.numeric(), pval=as.numeric())
-for(i in 1:length(levels(envsnp_na$envvar))){
-bin = binom.test(envsnp_na$n[[i]], sum(envsnp_na$n),1/length(levels (as.factor (envsnp_na$envvar))), alternative="greater")
-resultssnp_na[i,1] =  levels(envsnp_na$envvar)[[i]]
-resultssnp_na[i,2] =  bin$p.value
-}
-resultssnp_na$q = p.adjust(resultssnp_na$pval)
-```
-
-Number of SNPs EU
-```{r}
-supeu = dateu %>% filter(rank>=0.99) %>% droplevels()
-envsnp_eu = count(supeu, envvar)
-
-supeu$SNPID = paste0(supeu$contig,"__", supeu$location)
-length(levels(as.factor(supeu$SNPID)))#get only uniq SNPs across env
-length(as.factor(supeu$SNPID))#get all outlier SNPs
-
-chisq.test(envsnp_eu[,2])
-
-resultssnp_eu=data.frame(envvar=as.numeric(), pval=as.numeric())
-for(i in 1:length(levels(envsnp_eu$envvar))){
-bin = binom.test(envsnp_eu$n[[i]], sum(envsnp_eu$n),1/length(levels (as.factor (envsnp_eu$envvar))), alternative="greater")
-resultssnp_eu[i,1] =  levels(envsnp_eu$envvar)[[i]]
-resultssnp_eu[i,2] =  bin$p.value
-}
-resultssnp_eu$q = p.adjust(resultssnp_eu$pval)
-```
-
-Number of SNPs AU
-```{r}
-supau = datau %>% filter(rank>=0.99) %>% droplevels()
-envsnp_au = count(supau, envvar)
-
-supau$SNPID = paste0(supau$contig,"__", supau$location)
-length(levels(as.factor(supau$SNPID)))#get only uniq SNPs across env
-length(as.factor(supau$SNPID))#get all outlier SNPs
-
-chisq.test(envsnp_au[,2])
-
-resultssnp_au=data.frame(envvar=as.numeric(), pval=as.numeric())
-for(i in 1:length(levels(envsnp_au$envvar))){
-bin = binom.test(envsnp_au$n[[i]], sum(envsnp_au$n),1/length(levels (as.factor (envsnp_au$envvar))))
-resultssnp_au[i,1] =  levels(envsnp_au$envvar)[[i]]
-resultssnp_au[i,2] =  bin$p.value
-}
-resultssnp_au$q = p.adjust(resultssnp_au$pval)
-```
-
-
-1) Is the distribution of loci among environmental variables different from the expected chi-square distribution within each range?
-2) Is the proportion of outliers (out of outlier+non-outlier loci) significantly greater than can be expected from binomial distribution?
----
-
-```{r}
-supwind_gl = wind_gl %>% filter(topcan_q=="TRUE") %>% droplevels()
-envwind_gl = count(supwind_gl, envvar)
-chisq.test(envwind_gl[,2])
-
-supwind_gl$windID = paste(supwind_gl$contig, "__", supwind_gl$win.start)
-length(levels(as.factor(supwind_gl$windID)))#get only uniq SNPs across env
-length(as.factor(supwind_gl$windID))#get all outlier SNPs
-
-resultsgl=data.frame(envvar=as.numeric(), pval=as.numeric())
-for(i in 1:length(levels(envwind_gl$envvar))){
-bin = binom.test(envwind_gl$n[[i]], sum(envwind_gl$n),1/length(levels (as.factor (envwind_gl$envvar))), alternative="greater")
-resultsgl[i,1] =  levels(envwind_gl$envvar)[[i]]
-resultsgl[i,2] =  bin$p.value
-}
-resultsgl$q = p.adjust(resultsgl$pval)
-
-supwind_na = wind_na %>% filter(topcan_q=="TRUE") %>% droplevels()
-envwind_na = count(supwind_na, envvar)
-chisq.test(envwind_na[,2])
-
-supwind_na$windID = paste(supwind_na$contig, "__", supwind_na$win.start)
-length(levels(as.factor(supwind_na$windID)))#get only uniq SNPs across env
-length(as.factor(supwind_na$windID))#get all outlier SNPs
-
-resultsna=data.frame(envvar=as.numeric(), pval=as.numeric())
-for(i in 1:length(levels(envwind_na$envvar))){
-bin = binom.test(envwind_na$n[[i]], sum(envwind_na$n),1/length(levels (as.factor (envwind_na$envvar))), alternative="greater")
-resultsna[i,1] =  levels(envwind_na$envvar)[[i]]
-resultsna[i,2] =  bin$p.value
-}
-resultsna$q = p.adjust(resultsna$pval)
-
-supwind_eu = wind_eu %>% filter(topcan_q=="TRUE") %>% droplevels()
-envwind_eu = count(supwind_eu, envvar)
-chisq.test(envwind_eu[,2])
-
-supwind_eu$windID = paste(supwind_eu$contig, "__", supwind_eu$win.start)
-length(levels(as.factor(supwind_eu$windID)))#get only uniq SNPs across env
-length(as.factor(supwind_eu$windID))#get all outlier SNPs
-
-resultseu=data.frame(envvar=as.numeric(), pval=as.numeric())
-for(i in 1:length(levels(envwind_eu$envvar))){
-bin = binom.test(envwind_eu$n[[i]], sum(envwind_eu$n),1/length(levels (as.factor (envwind_eu$envvar))), alternative="greater")
-resultseu[i,1] =  levels(envwind_eu$envvar)[[i]]
-resultseu[i,2] =  bin$p.value
-}
-resultseu$q = p.adjust(resultseu$pval)
-
-supwind_au = wind_au %>% filter(topcan_q=="TRUE") %>% droplevels()
-envwind_au = count(supwind_au, envvar)
-chisq.test(envwind_au[,2])
-
-supwind_au$windID = paste(supwind_au$contig, "__", supwind_au$win.start)
-length(levels(as.factor(supwind_au$windID)))#get only uniq SNPs across env
-length(as.factor(supwind_au$windID))#get all outlier SNPs
-
-resultsau=data.frame(envvar=as.numeric(), pval=as.numeric())
-for(i in 1:length(levels(envwind_au$envvar))){
-bin = binom.test(envwind_au$n[[i]], sum(envwind_au$n),1/length(levels (as.factor (envwind_au$envvar))), alternative="greater")
-resultsau[i,1] =  levels(envwind_au$envvar)[[i]]
-resultsau[i,2] =  bin$p.value
-}
-resultsau$q = p.adjust(resultsau$pval)
-```
-
-Create table with proportion of outliers per env and expectations for each range
+Overlap in BF wind outliers for each candidate environmental variable
 ---
 ```{r}
-##Calculate proportion of outlier windows
-GL=data.frame(envvar=as.numeric(), prop=as.numeric())
-for(i in 1:length(levels(envwind_gl$envvar))){
-GL[i,1] =  levels(envwind_gl$envvar)[[i]]
-GL[i,2] =  envwind_gl$n[[i]]/sum(envwind_gl$n) 
-}
+wind_na = read.table("bf_90miss_99bf3/sresbfall_na_1000_993_90miss.txt", header=T)
+wind_eu = read.table("bf_90miss_99bf3/sresbfall_eu_1000_993_90miss.txt", header=T)
+wind_au = read.table("bf_90miss_99bf3/sresbfall_au_1000_993_90miss.txt", header=T)
+wind_na$windID = paste(wind_na$contig, "__", wind_na$win.start)
+wind_eu$windID = paste(wind_eu$contig, "__", wind_eu$win.start)
+wind_au$windID = paste(wind_au$contig, "__", wind_au$win.start)
+wind_na$windIDenv = paste(wind_na$windID, "__", wind_na$envvar)
+wind_eu$windIDenv = paste(wind_eu$windID, "__", wind_eu$envvar)
+wind_au$windIDenv = paste(wind_au$windID, "__", wind_au$envvar)
 
-NA.=data.frame(envvar=as.numeric(), prop=as.numeric())
-for(i in 1:length(levels(envwind_na$envvar))){
-NA.[i,1] =  levels(envwind_na$envvar)[[i]]
-NA.[i,2] =  envwind_na$n[[i]]/sum(envwind_na$n) 
-}
-
-EU=data.frame(envvar=as.numeric(), prop=as.numeric())
-for(i in 1:length(levels(envwind_eu$envvar))){
-EU[i,1] =  levels(envwind_eu$envvar)[[i]]
-EU[i,2] =  envwind_eu$n[[i]]/sum(envwind_eu$n) 
-}
-
-AU=data.frame(envvar=as.numeric(), prop=as.numeric())
-for(i in 1:length(levels(envwind_au$envvar))){
-AU[i,1] =  levels(envwind_au$envvar)[[i]]
-AU[i,2] =  envwind_au$n[[i]]/sum(envwind_au$n) 
-}
-
-props = combine(GL, NA., EU, AU)
-sprops = cbind(NA., EU$prop, AU$prop, GL$prop)
-sprops$envvar <- factor(sprops$envvar, levels = c("Latitude_all", "Longitude_all","alt_all", "bio1_all", "bio2_all", "bio3_all",  "bio4_all", "bio5_all","bio6_all","bio7_all","bio8_all","bio9_all","bio10_all","bio11_all","bio12_all","bio13_all","bio14_all","bio15_all","bio16_all","bio17_all","bio18_all","bio19_all"))
-
-
-##95% CI (one-sided test)
-#P = 0.05 # see Yeaman et al 2016
-
-r95gl = data.frame(envvar=as.numeric(), prop=as.numeric(), source= numeric())
-for(i in 1:length(levels(envwind_gl$envvar))){
-r95gl[i,1] =  levels(envwind_gl$envvar)[[i]]
-p = mean(GL$prop)
-r95gl[i,2] =   p + c(qnorm(0.95))*sqrt((1/sum(envwind_gl$n))*p*(1-p))
-r95gl[i,3] = "GL"
-}
-
-r95na = data.frame(envvar=as.numeric(), prop=as.numeric(), source= numeric())
-for(i in 1:length(levels(envwind_na$envvar))){
-r95na[i,1] =  levels(envwind_na$envvar)[[i]]
-p = mean(NA.$prop)
-r95na[i,2] =   p + c(qnorm(0.95))*sqrt((1/sum(envwind_na$n))*p*(1-p))
-r95na[i,3] = "NA."
-}
-
-r95eu = data.frame(envvar=as.numeric(), prop=as.numeric(), source= numeric())
-for(i in 1:length(levels(envwind_eu$envvar))){
-r95eu[i,1] =  levels(envwind_eu$envvar)[[i]]
-p = mean(EU$prop)
-r95eu[i,2] =   p + c(qnorm(0.95))*sqrt((1/sum(envwind_eu$n))*p*(1-p))
-r95eu[i,3] = "EU"
-}
-
-r95au = data.frame(envvar=as.numeric(), prop=as.numeric(), source= numeric())
-for(i in 1:length(levels(envwind_au$envvar))){
-r95au[i,1] =  levels(envwind_au$envvar)[[i]]
-p = mean(AU$prop)
-r95au[i,2] =   p + c(qnorm(0.95))*sqrt((1/sum(envwind_au$n))*p*(1-p))
-r95au[i,3] = "AU"
-}
-
-p95 = rbind(r95gl,r95na, r95eu, r95au)
-allprop95 = combine(props, p95)
+wind_na$envvar = as.factor(gsub("_all","",wind_na$envvar))
+wind_eu$envvar =  as.factor(gsub("_all","",wind_eu$envvar))
+wind_au$envvar =  as.factor(gsub("_all","",wind_au$envvar))
 ```
 
-plot
+
 ```{r}
-allprop95$envvar <- factor(allprop95$envvar, levels = c("Latitude_all", "Longitude_all","alt_all", "bio1_all", "bio2_all", "bio3_all",  "bio4_all", "bio5_all","bio6_all","bio7_all","bio8_all","bio9_all","bio10_all","bio11_all","bio12_all","bio13_all","bio14_all","bio15_all","bio16_all","bio17_all","bio18_all","bio19_all"))
-allprop95$source <- factor(allprop95$source, levels = c( "AU","EU", "NA.", "GL" ))
+bfn_all = read.table("bf_90miss_99bf3/mbf_1000_993_binnullW_90miss.txt", header=T)
 
-pdf("propoutwind_env_range.pdf", height=3.5, width=7)
-ggplot()+
-  geom_bar(data = allprop95 %>% filter(source.1=="props"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge") +
-  geom_bar(data = allprop95 %>% filter(source.1=="p95"), aes(envvar, prop, fill = source) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")  + theme_bw() 
-dev.off() 
+#binomial only
+bf_sup_NA = bfn_all %>% filter(qbinom=="yes" & Range=="nat") %>% droplevels()
+bf_sup_EU = bfn_all %>% filter(qbinom=="yes" & Range=="eu") %>% droplevels()
+bf_sup_AU= bfn_all %>% filter(qbinom=="yes" & Range=="au") %>% droplevels()
 
-allprop95_sub = allprop95 %>% filter( envvar %in% c("bio1_all","bio2_all", "bio4_all", "bio8_all", "bio12_all","bio15_all","bio17_all", "alt_all", "Latitude_all", "Longitude_all"))
+#with null-W
+bfn_sup_NA = bfn_all %>% filter(binnullw=="yes" & Range=="nat") %>% droplevels()
+bfn_sup_EU = bfn_all %>% filter(binnullw=="yes" & Range=="eu") %>% droplevels()
+bfn_sup_AU = bfn_all %>% filter(binnullw=="yes" & Range=="au") %>% droplevels()
 
-pdf("propoutwind_env_range_sub.pdf", height=3.5, width=7)
-  ggplot()+
-  geom_bar(data = allprop95_sub %>% filter(source.1=="props"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge") +
-  geom_bar(data = allprop95_sub %>% filter(source.1=="p95"), aes(envvar, prop, fill = source) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black")                   + theme_bw()                   
-dev.off()                             
+naeu = inner_join(bfn_sup_NA,bfn_sup_EU, by="windIDenv")
+naau = inner_join(bfn_sup_NA,bfn_sup_AU, by="windIDenv")
+euau = inner_join(bfn_sup_EU,bfn_sup_AU, by="windIDenv")
 
-allprop95_subsub = allprop95 %>% filter(source!="GL"& envvar %in% c("bio1_all","bio2_all", "bio4_all", "bio8_all", "bio12_all","bio15_all","bio17_all", "alt_all", "Latitude_all", "Longitude_all"))
+cnaeu = as.data.frame(dplyr::count(naeu, vars=env.x))
+cnaau= as.data.frame(dplyr::count(naau, vars=env.x))
+ceuau= as.data.frame(dplyr::count(euau, vars=env.x))
+call = gdata::combine(cnaeu,cnaau,ceuau)
+```
 
-pdf("propoutwind_env_range_subsub.pdf", height=3.5, width=7)
-  ggplot()+
-  geom_bar(data = allprop95_subsub %>% filter(source.1=="props"), aes(envvar, prop, fill = source),stat = 'identity',position="dodge") +
-  geom_bar(data = allprop95_subsub %>% filter(source.1=="p95"), aes(envvar, prop, fill = source) ,stat = 'identity',position="dodge", alpha=0, size=.1, color="black") + theme_bw()                                    
-dev.off()                             
+
+
+**Calculate the upper 99th quantile of the hypergeometric distribution**  
+---
+```{r}
+topcan.hyper <- function(outdat1, outdat2,fulldat1, fulldat2, comp){
+  res = data.frame(env=numeric(), overlap=numeric(),  q99=numeric(), p=numeric())
+
+  for(i in 1:length(levels(fulldat1$envvar))){
+    
+  envirs =   levels(fulldat1$envvar)
+  envir = envirs[i]
+  #outdat1 = dataframe with outliers in range 1
+  #outdat2 = dataframe with outliers in range 2
+  #fuldat1 = dataframe with all SNPs or windows in range 1
+  #fulldat2 = dataframe with all SNPs or windows in range 2
+  #env = environmental variable to be tested
   
+  outdat1env = outdat1 %>% filter(env %in% envir) %>% droplevels()
+  outdat2env = outdat2 %>% filter(env %in% envir) %>% droplevels()
+  fulldat1env = fulldat1 %>% filter(envvar %in% envir) %>% droplevels()
+  fulldat2env = fulldat2 %>% filter(envvar %in% envir) %>% droplevels()
+
+ # phyper(q, m, n, k, lower.tail = FALSE, log.p = FALSE), where q=size of outlier overlap-1; m=number of outlier windows range#1;  #n=(total number shared windows-m); k=number of outlier windows range#2.
+
+q = length(intersect(outdat1env$windIDenv,outdat2env$windIDenv ))   -1
+m = nrow(outdat1env)
+n = length(intersect(fulldat1env$windIDenv,fulldat2env$windIDenv) )-m
+k = nrow(outdat2env)
+
+#I guess expected here is again random distribution, but now I am just showing the top part of the graph
+#obsexp_euau20 <- as.data.frame(table(bincount$bin)/(0.05^2*nrow(bincount)))
+expected = 0.01^2*length(intersect(fulldat1env$windIDenv,fulldat2env$windIDenv) )
+
+#obsexp = q/expected #I can do this, but I feel it is making it more complicated
+
+a = 1-phyper(q,m,n,k)
+b = qhyper(0.999,m,n,k)
+#q99 = b/expected #see comment above
+
+  res[i,1] = envir
+  res[i,2] = q+1
+  res[i,3] = b
+  res[i,4] = a
+
+}
+res$q = p.adjust(res$p, method = 'fdr')
+res$comparison = comp
+   return(res)
+
+}
+
 ```
 
-
-Calculating differences in number of outliers for each environment in pair-wise range comparisons
+Run
 ---
 ```{r}
-dat_snp = cbind(envsnp_gl, envsnp_na$n, envsnp_eu$n, envsnp_au$n)
-colnames(dat_snp) = c("env","GL","NA.","EU","AU")
-dat_wind = cbind(envwind_gl, envwind_na$n, envwind_eu$n, envwind_au$n)
-colnames(dat_wind) = c("env","GL","NA.","EU","AU")
+# function(outdat1, outdat2,fulldat1, fulldat2, output)
+N_E = topcan.hyper(bfn_sup_NA,bfn_sup_EU, wind_na, wind_eu, "N-E")
+N_A = topcan.hyper(bfn_sup_NA,bfn_sup_AU, wind_na, wind_au, "N-A")
+E_A = topcan.hyper(bfn_sup_EU,bfn_sup_AU, wind_eu, wind_au, "E-A")
 
-res_snpnaeu = data.frame(env=numeric(), chisq=numeric(),  df=numeric(), p=numeric())
-for(i in 1:length(dat_snp$env)){
-  tst = prop.test(x= c(dat_snp$NA.[[i]],dat_snp$EU[[i]]), n=c(sum(dat_snp$NA.),sum(dat_snp$EU)))
-  res_snpnaeu[i,1] = levels(dat_snp$env)[[i]]
-  res_snpnaeu[i,2] = tst$statistic[[1]] #x2 value
-  res_snpnaeu[i,3] = tst$parameter[[1]] #df
-  res_snpnaeu[i,4] = tst$p.value # pval
-}
-res_snpnaeu$q = p.adjust(res_snpnaeu$p, method = 'fdr')
-
-res_snpnaau = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
-for(i in 1:length(dat_snp$env)){
-  tst = prop.test(x= c(dat_snp$NA.[[i]],dat_snp$AU[[i]]), n=c(sum(dat_snp$NA.),sum(dat_snp$AU)))
-  res_snpnaau[i,1] = levels(dat_snp$env)[[i]]
-  res_snpnaau[i,2] = tst$statistic[[1]] #x2 value
-  res_snpnaau[i,3] = tst$parameter[[1]] #df
-  res_snpnaau[i,4] = tst$p.value # pval
-}
-res_snpnaau$q = p.adjust(res_snpnaau$p, method = 'fdr')
-
-res_snpeuau = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
-for(i in 1:length(dat_snp$env)){
-  tst = prop.test(x= c(dat_snp$EU[[i]],dat_snp$AU[[i]]), n=c(sum(dat_snp$EU),sum(dat_snp$AU)))
-  res_snpeuau[i,1] = levels(dat_snp$env)[[i]]
-  res_snpeuau[i,2] = tst$statistic[[1]] #x2 value
-  res_snpeuau[i,3] = tst$parameter[[1]] #df
-  res_snpeuau[i,4] = tst$p.value # pval
-}
-res_snpeuau$q = p.adjust(res_snpeuau$p, method = 'fdr')
-
-envrangecomp = cbind(res_snpnaeu[,c(1:3,5)],res_snpnaau[,c(2:3,5)],res_snpeuau[,c(2:3,5)])
-
-
-res_windnaeu = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
-for(i in 1:length(dat_wind$env)){
-  tst = prop.test(x= c(dat_wind$NA.[[i]],dat_wind$EU[[i]]), n=c(sum(dat_wind$NA.),sum(dat_wind$EU)))
-  res_windnaeu[i,1] = levels(dat_wind$env)[[i]]
-  res_windnaeu[i,2] = tst$statistic[[1]] #x2 value
-  res_windnaeu[i,3] = tst$parameter[[1]] #df
-  res_windnaeu[i,4] = tst$p.value # pval
-}
-res_windnaeu$q = p.adjust(res_windnaeu$p, method = 'fdr')
-
-res_windnaau = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
-for(i in 1:length(dat_wind$env)){
-  tst = prop.test(x= c(dat_wind$NA.[[i]],dat_wind$AU[[i]]), n=c(sum(dat_wind$NA.),sum(dat_wind$AU)))
-  res_windnaau[i,1] = levels(dat_wind$env)[[i]]
-  res_windnaau[i,2] = tst$statistic[[1]] #x2 value
-  res_windnaau[i,3] = tst$parameter[[1]] #df
-  res_windnaau[i,4] = tst$p.value # pval
-}
-res_windnaau$q = p.adjust(res_windnaau$p, method = 'fdr')
-
-res_windeuau = data.frame(env=numeric(), chisq=numeric(), df=numeric(), p=numeric())
-for(i in 1:length(dat_wind$env)){
-  tst = prop.test(x= c(dat_wind$EU[[i]],dat_wind$AU[[i]]), n=c(sum(dat_wind$EU),sum(dat_wind$AU)))
-  res_windeuau[i,1] = levels(dat_wind$env)[[i]]
-  res_windeuau[i,2] = tst$statistic[[1]] #x2 value
-  res_windeuau[i,3] = tst$parameter[[1]] #df
-  res_windeuau[i,4] = tst$p.value # pval
-}
-res_windeuau$q = p.adjust(res_windeuau$p, method = 'fdr')
-
-envrangecompwind= cbind(res_windnaeu[,c(1:3,5)],res_windnaau[,c(2:3,5)],res_windeuau[,c(2:3,5)])
-
+call =rbind(N_E, N_A, E_A)
 ```
 
-
-Calculating the number of loci under selection, and if this is different between ranges
----
-
 ```{r}
-uni_naeuwind = prop.test(x= c(length(levels(as.factor(supwind_na$windID))),length(levels(as.factor(supwind_eu$SNPID)))), n= c(length(as.factor(supwind_na$windID)), length(as.factor(supwind_eu$windID)))) #outlier wind/total wind, NA-EU
-uni_naauwind = prop.test(x= c(length(levels(as.factor(supwind_na$windID))),length(levels(as.factor(supwind_au$SNPID)))), n= c(length(as.factor(supwind_na$windID)), length(as.factor(supwind_au$windID)))) #top 1% SNP/total SNP, NA-EU
-uni_euauwind = prop.test(x= c(length(levels(as.factor(supwind_eu$windID))),length(levels(as.factor(supwind_au$SNPID)))), n= c(length(as.factor(supwind_eu$windID)), length(as.factor(supwind_au$windID)))) #top 1% SNP/total SNP, NA-EU
+call = call %>% filter(! env %in% c("dem"))
 
-length(levels(as.factor(supwind_na$windID)))/ length((as.factor(supwind_na$windID)))
-length(levels(as.factor(supwind_eu$windID)))/ length((as.factor(supwind_eu$windID)))
-length(levels(as.factor(supwind_au$windID)))/ length((as.factor(supwind_au$windID)))
-length(levels(as.factor(supwind_gl$windID)))/ length((as.factor(supwind_gl$windID)))
-       
-wind_q = p.adjust(c( uni_naeuwind$p.value,  uni_naauwind$p.value,  uni_euauwind$p.value), method='fdr')
-
-uni_dat = as.data.frame(matrix(ncol=3, nrow=3, byrow=TRUE,data = c(
-  uni_naeuwind$statistic[[1]], uni_naeuwind$parameter[[1]], wind_q[1],
-  uni_naauwind$statistic[[1]], uni_naauwind$parameter[[1]], wind_q[2],
-  uni_euauwind$statistic[[1]], uni_euauwind$parameter[[1]], wind_q[3]
-  )))
-
-uni_dat
-```
-
-Calculating the number of unique loci under selection, and if this is different between ranges
----
-
-```{r}
-uni_naeuwind = prop.test(x= c(length(levels(as.factor(supwind_na$windID))),length(levels(as.factor(supwind_eu$SNPID)))), n= c(length(as.factor(supwind_na$windID)), length(as.factor(supwind_eu$windID)))) #outlier wind/total wind, NA-EU
-uni_naauwind = prop.test(x= c(length(levels(as.factor(supwind_na$windID))),length(levels(as.factor(supwind_au$SNPID)))), n= c(length(as.factor(supwind_na$windID)), length(as.factor(supwind_au$windID)))) #top 1% SNP/total SNP, NA-EU
-uni_euauwind = prop.test(x= c(length(levels(as.factor(supwind_eu$windID))),length(levels(as.factor(supwind_au$SNPID)))), n= c(length(as.factor(supwind_eu$windID)), length(as.factor(supwind_au$windID)))) #top 1% SNP/total SNP, NA-EU
-
-wind_q = p.adjust(c( uni_naeuwind$p.value,  uni_naauwind$p.value,  uni_euauwind$p.value), method='fdr')
-
-uni_dat = as.data.frame(matrix(ncol=3, nrow=3, byrow=TRUE,data = c(
-  uni_naeuwind$statistic[[1]], uni_naeuwind$parameter[[1]], wind_q[1],
-  uni_naauwind$statistic[[1]], uni_naauwind$parameter[[1]], wind_q[2],
-  uni_euauwind$statistic[[1]], uni_euauwind$parameter[[1]], wind_q[3]
-  )))
-
-uni_dat
-```
-
-Calculate the number of unique loci compared to the total number selected by each environment between range pairs
----
-
-```{r}
-res_snpnaeuau = data.frame(env=numeric(), propNA = numeric(), propEU = numeric(), propAU= numeric(),propGL=numeric(), chisqNAEU=numeric(),  dfNAEU=numeric(), pNAEU=numeric(), qNAEU=numeric(),chisqNAAU=numeric(),  dfNAAU=numeric(), pNAAU=numeric(),qNAAU=numeric(),chisqEUAU=numeric(),  dfEUAU=numeric(), pEUAU=numeric(),qEUAU=numeric() )
-for(i in 1:length(levels(supwind_na$envvar))){
-  focal_supwindGL = supwind_gl[which(supwind_gl$envvar==levels(supwind_gl$envvar)[i]),]
-  othersupwindGL = supwind_gl[which(supwind_gl$envvar!=levels(supwind_gl$envvar)[i]),]
-  uniqGL = anti_join(focal_supwindGL, othersupwindGL, by = "windID")
-  focal_supwindNA = supwind_na[which(supwind_na$envvar==levels(supwind_na$envvar)[i]),]
-  othersupwindNA = supwind_na[which(supwind_na$envvar!=levels(supwind_na$envvar)[i]),]
-  uniqNA = anti_join(focal_supwindNA, othersupwindNA, by = "windID")
-  focal_supwindEU = supwind_eu[which(supwind_eu$envvar==levels(supwind_eu$envvar)[i]),]
-  othersupwindEU = supwind_eu[which(supwind_eu$envvar!=levels(supwind_eu$envvar)[i]),]
-  uniqEU = anti_join(focal_supwindEU, othersupwindEU, by = "windID")
-  focal_supwindAU = supwind_au[which(supwind_au$envvar==levels(supwind_au$envvar)[i]),]
-  othersupwindAU = supwind_au[which(supwind_au$envvar!=levels(supwind_au$envvar)[i]),]
-  uniqAU = anti_join(focal_supwindAU, othersupwindAU, by = "windID")
-  
-  res_snpnaeuau[i,1] = levels(supwind_na$envvar)[[i]]
-  res_snpnaeuau[i,2] = nrow(uniqNA)/nrow(focal_supwindNA)
-  res_snpnaeuau[i,3] = nrow(uniqEU)/nrow(focal_supwindEU)
-  res_snpnaeuau[i,4] = nrow(uniqAU)/nrow(focal_supwindAU)
-  res_snpnaeuau[i,5] = nrow(uniqGL)/nrow(focal_supwindGL)
-  #NAEEU
-  if(nrow(uniqEU)>0 & nrow(uniqNA) > 0){ # only calculate if there are unique windows in each range
-  tst = prop.test(x= c(nrow(uniqNA), nrow(uniqEU)), n=c(nrow(focal_supwindNA), nrow(focal_supwindEU)))
-  res_snpnaeuau[i,6] = tst$statistic[[1]] #x2 value
-  res_snpnaeuau[i,7] = tst$parameter[[1]] #df
-  res_snpnaeuau[i,8] = tst$p.value # pval
-  }
-  
-  #NAAU
-  if(nrow(uniqAU)>0 & nrow(uniqNA) > 0){ # only calculate if there are unique windows in each range
-  tst = prop.test(x= c(nrow(uniqNA), nrow(uniqAU)), n=c(nrow(focal_supwindNA), nrow(focal_supwindAU)))
-  res_snpnaeuau[i,10] = tst$statistic[[1]] #x2 value
-  res_snpnaeuau[i,11] = tst$parameter[[1]] #df
-  res_snpnaeuau[i,12] = tst$p.value # pval
-  }
-  
-  #EUAU
-  if(nrow(uniqAU)>0 & nrow(uniqEU) > 0){ # only calculate if there are unique windows in each range
-  tst = prop.test(x= c(nrow(uniqEU), nrow(uniqAU)), n=c(nrow(focal_supwindEU), nrow(focal_supwindAU)))
-  res_snpnaeuau[i,14] = tst$statistic[[1]] #x2 value
-  res_snpnaeuau[i,15] = tst$parameter[[1]] #df
-  res_snpnaeuau[i,16] = tst$p.value # pval
-  }
-}
-res_snpnaeuau$qNAEU = p.adjust(res_snpnaeuau$pNAEU, method = 'fdr')
-res_snpnaeuau$qNAAU = p.adjust(res_snpnaeuau$pNAAU, method = 'fdr')
-res_snpnaeuau$qEUAU = p.adjust(res_snpnaeuau$pEUAU, method = 'fdr')
-res_snpnaeuau$env <- factor(res_snpnaeuau$env, levels = c("Latitude_all", "Longitude_all","alt_all", "bio1_all", "bio2_all", "bio3_all",  "bio4_all", "bio5_all","bio6_all","bio7_all","bio8_all", "bio9_all","bio10_all", "bio11_all", "bio12_all","bio13_all","bio14_all","bio15_all","bio16_all","bio17_all","bio18_all","bio19_all"))
-
-write.table(res_snpnaeuau, "prop_uniqwind_envrange")
-```
-
-plot
-```{r}
-res_unq = select(res_snpnaeuau,env,starts_with("prop"))
-mres_unq = melt(res_unq)
-
-
-p95na= p95eu = p95au = 1/length(levels(as.factor(res_unq$env)))
-ci95 = select(res_snpnaeuau,env)
-ci95$propNA = p95na + c(qnorm(0.95))*sqrt((1/sum(envwind_na$n))*p95na*(1-p95na))
-ci95$propEU = p95eu + c(qnorm(0.95))*sqrt((1/sum(envwind_eu$n))*p95eu*(1-p95eu))
-ci95$propAU = p95au + c(qnorm(0.95))*sqrt((1/sum(envwind_au$n))*p95au*(1-p95au))
-mci95=melt(ci95)
-
-mres_unqci = combine(mres_unq, mci95) #turn dplyr off
-
-mres_unqci$env <- factor(mres_unqci$env, levels = c("Latitude_all", "Longitude_all","alt_all", "bio1_all", "bio2_all", "bio3_all",  "bio4_all", "bio5_all","bio6_all","bio7_all","bio8_all", "bio9_all","bio10_all", "bio11_all", "bio12_all","bio13_all","bio14_all","bio15_all","bio16_all","bio17_all","bio18_all","bio19_all"))
-mres_unqci$variable <- factor(mres_unqci$variable, levels = c( "propAU","propEU", "propNA" ))
-
-pdf("prop_uniq_outwind_env_range.pdf", height=3.5, width=7)
-  ggplot()+
-  geom_bar(data = mres_unqci[which(mres_unqci$source=="mres_unq"),], aes(env, value, fill = variable),stat = 'identity',position="dodge") +
-    geom_bar(data = mres_unqci[which(mres_unqci$source=="mci95"),], aes(env, value, fill = variable),stat = 'identity',position="dodge", alpha=0, size=.1, color="black") + theme_bw()  
+pdf("_Graph/env_binomnullw99_rangeoverlap.pdf", height=3.5, width=7)
+ggplot(call,aes(env, overlap, fill=comparison))+
+  geom_bar(stat="identity",position='dodge') +
+  geom_bar(data = call, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
 dev.off()
 
-mres_unqci_subsub = mres_unqci %>% filter(variable!="NA" &env %in% c("bio1_all","bio2_all", "bio4_all", "bio8_all", "bio12_all","bio15_all","bio17_all", "alt_all", "Latitude_all", "Longitude_all"))
+call_sub = call %>% filter( env %in% c("bio1","bio2", "bio5", "bio10","bio11", "Latitude", "Longitude"))
 
-pdf("prop_uniq_outwind_env_range_subsub.pdf", height=3.5, width=7)
-  ggplot()+
-  geom_bar(data = mres_unqci_subsub[which(mres_unqci_subsub$source=="mres_unq"),], aes(env, value, fill = variable),stat = 'identity',position="dodge") +
-    geom_bar(data = mres_unqci_subsub[which(mres_unqci_subsub$source=="mci95"),], aes(env, value, fill = variable),stat = 'identity',position="dodge", alpha=0, size=.1, color="black") + theme_bw()  
-
-  dev.off()
+pdf("_Graph/env_binomnullw99_rangeoverlap_sub.pdf", height=3.5, width=3.5)
+ggplot(call_sub,aes(env, overlap, fill=comparison))+
+  geom_bar(stat="identity",position='dodge') +
+  geom_bar(data = call_sub, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+ scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+scale_y_continuous(limits=c(0,45))
+dev.off()
 ```
 
+Without nullW
+```{r}
+# function(outdat1, outdat2,fulldat1, fulldat2, output)
+N_E = topcan.hyper(bf_sup_NA,bf_sup_EU, wind_na, wind_eu, "N-E")
+N_A = topcan.hyper(bf_sup_NA,bf_sup_AU, wind_na, wind_au, "N-A")
+E_A = topcan.hyper(bf_sup_EU,bf_sup_AU, wind_eu, wind_au, "E-A")
 
-old
+call =rbind(N_E, N_A, E_A)
+```
+
+```{r}
+call = call %>% filter(! env %in% c("dem"))
+
+pdf("_Graph/env_binom99_rangeoverlap.pdf", height=3.5, width=7)
+ggplot(call,aes(env, overlap, fill=comparison))+
+  geom_bar(stat="identity",position='dodge') +
+  geom_bar(data = call, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+dev.off()
+
+call_sub = call %>% filter( env %in% c("bio1","bio2", "bio5", "bio10","bio11", "Latitude", "Longitude"))
+
+pdf("_Graph/env_binom99_rangeoverlap_sub.pdf", height=3.5, width=3.5)
+ggplot(call_sub,aes(env, overlap, fill=comparison))+
+  geom_bar(stat="identity",position='dodge') +
+  geom_bar(data = call_sub, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+scale_y_continuous(limits=c(0,45))
+dev.off()
+```
+
+for windows
 ---
-
 ```{r}
-uni_naeusnp = prop.test(x= c(length(levels(as.factor(supna$SNPID))),length(levels(as.factor(supeu$SNPID)))), n= c(length(as.factor(supna$SNPID)), length(as.factor(supeu$SNPID)))) #top 1% SNP/total SNP, NA-EU
-uni_naausnp = prop.test(x= c(length(levels(as.factor(supna$SNPID))),length(levels(as.factor(supau$SNPID)))), n= c(length(as.factor(supna$SNPID)), length(as.factor(supau$SNPID)))) #top 1% SNP/total SNP, NA-EU
-uni_euausnp = prop.test(x= c(length(levels(as.factor(supeu$SNPID))),length(levels(as.factor(supau$SNPID)))), n= c(length(as.factor(supeu$SNPID)), length(as.factor(supau$SNPID)))) #top 1% SNP/total SNP, NA-EU
+win_na = read.table("bf_90miss_99bf3/sresbfall_na_1000_993_90miss.txt", header=T)
+win_eu = read.table("bf_90miss_99bf3/sresbfall_eu_1000_993_90miss.txt", header=T)
+win_au = read.table("bf_90miss_99bf3/sresbfall_au_1000_993_90miss.txt", header=T)
 
-  uni_naeusnp$statistic[[1]], uni_naeusnp$parameter[[1]], snp_q[1],
-  uni_naausnp$statistic[[1]], uni_naausnp$parameter[[1]], snp_q[2],
-  uni_euausnp$statistic[[1]], uni_euausnp$parameter[[1]], snp_q[3],
-  
+win_nasub = dplyr::select(win_na, contig, win.start, envvar, topcan_q)
+win_eusub = dplyr::select(win_eu, contig, win.start, envvar, topcan_q)
+win_ausub = dplyr::select(win_au, contig, win.start, envvar, topcan_q)
 
+malldataw = combine(win_nasub,win_eusub, win_ausub) #package gdata (doesn't work in combination with other packages)
+malldataw_high <- malldataw[which(malldataw$topcan_q=="TRUE"),]
 
-snp_q = p.adjust(c( uni_naeusnp$p.value,  uni_naausnp$p.value,  uni_euausnp$p.value), method='fdr')
-
+outlw <- as.data.frame(table(malldataw_high$envvar, malldataw_high$source))
+colnames(outlw) <- c("Environment", "Range", "windows")
+outlw2 <- spread(outlw,  Range, windows)
+colnames(outlw2) = c("Environment","NorthAmerica","Europe","Australia")
+write.table(outlw2, "../bfwindbinom_outliersperrange.txt")
+outlw2 = read.table("bfwindbinom_outliersperrange.txt", header=T)
 ```
 
+*plot outliers env* S4
+---
 ```{r}
-dat = read.table("windenvrange.txt", header=T)
-mdat = melt(dat)
-mdat$int  = interaction(mdat$variable, mdat$env)
-tst = aov(value~ variable + env, data=mdat)
-tst = aov(value~ int, data=mdat)
+pdf("_Graph/envoutl_binomwin_NAEU.pdf", height=4, width=4)
+ggplot(outlw2, aes(x=NorthAmerica, y=Europe, colour=as.factor(outlwNAEU), shape=as.factor(outlwNAEU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  xlab("Number of binomial outlier windows\n in North America (native)") +
+  ylab("Number of binomial outlier windows\n in Europe (introduced)") +
+  geom_text_repel()
+dev.off()
 
-TukeyHSD(tst)
+pdf("_Graph/envoutl_binomwin_NAAU.pdf", height=4, width=4)
+ggplot(outlw2, aes(x=NorthAmerica, y=Australia, colour=as.factor(outlwNAAU), shape=as.factor(outlwNAAU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  xlab("Number of binomial outlier windows\n in North America (native)") +
+  ylab("Number of binomial outlier windows\n in Australia (introduced)") +
+  geom_text_repel()
+dev.off()
+
+pdf("_Graph/envoutl_binomwin_EUAU.pdf", height=4, width=4)
+ggplot(outlw2, aes(y=Australia, x=Europe, colour=as.factor(outlwEUAU), shape=as.factor(outlwEUAU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  ylab("Number of binomial outlier windows\n in Australia (introduced)") +
+  xlab("Number of binomial outlier windows\n in Europe (introduced)") +
+  geom_text_repel()
+dev.off()
 
 ```
-
-Is this proportion different between range pairs?
-```{r}
-prop.test(x = c(5568, 8629 ), n = c(19095, 18936)) #NA vs EU eaa
-prop.test(x = c(5568, 6655 ), n = c(19095, 17834)) #NA vs AU eaa
-prop.test(x = c(8629, 6655 ), n = c(18936, 17834)) #EU vs AU eaa
-p.adjust(c(5.09e-14,0.001215,2.232e-05), method='fdr')
-```
-
-```{r}
-dat=read.table("gcta_all_1000-1000_top99_allwinds_SNPinfo", header=T)
-dat2 = dat[which(dat$myrank>=0.99),]
-dat2$SNPID = paste0(dat2$contig,"__", dat2$location)
-length(levels(as.factor(dat2$SNPID)))
-
-```
-Test if the number of outlier windows are allocated similarily along environmental variables between range-paris
-```{r}
-chisq.test(cbind(dat$NA., dat$EU, dat$AU))
-chisq.post.hoc(dat[1:4,2:4], test = c("fisher.test"), popsInRows = FALSE,
-control = c("fdr"))
-
-mdat = melt(dat)
-mdatnaeu =mdat  %>% filter(variable!="AU") %>% droplevels()
-mdatnaau =mdat  %>% filter(variable!="EU") %>% droplevels()
-mdateuau = mdat  %>% filter(variable!="NA.") %>% droplevels()
-
-mdat$envrange = interaction(mdat$env,mdat$variable)
-tem = glm(value ~ envrange, data=mdat, family = poisson)
-summary(tem)
-visreg(tem, xvar="env", by="variable")
-testInteractions(tem)
-
-
-fake.glmNAEU = glm(cbind(NA., EU) ~ env, family = binomial(), data = dat)
-fake.glmNAAU = glm(cbind(NA., AU) ~ env, family = binomial(), data = dat)
-fake.glmEUAU = glm(cbind(EU, AU) ~ env, family = binomial(), data = dat)
-
-fake.lsmNAEU = lsmeans(fake.glmNAEU, "env")
-fake.lsmNAAU = lsmeans(fake.glmNAAU, "env")
-fake.lsmEUAU = lsmeans(fake.glmEUAU, "env")
-
-plot(fake.lsmNAEU)
-plot(fake.lsmNAAU)
-plot(fake.lsmEUAU)
-
-
-```
-
-```{r}
-datxtx = read.table("gctabfxtx.txt", header=T)
-```
-
-
-
-Overlap in BF outliers between GLOBAL and NATIVE dataset, for each environmental variable
-```{r}
-dat_gcta = dat %>% filter(method=="gcta") %>% droplevels() #the last option will remove the non-used levels 
-varl = as.factor(levels(dat_gcta$var))
-
-dat_bf = dat %>% filter(method=="bf") %>% droplevels()
-varl_bf = as.factor(levels(dat_bf$var))
-
-```
-
-Number of common windows between traits
-```{r}
-s = 1
-results = data.frame(name = numeric(), count = numeric())
-for(j in 1:length(varl)){
-  for(i in 1:length(varl)){
-    a = dat_gcta %>% filter(var==varl[j])
-    b = dat_gcta %>% filter(var==varl[i])
-    
-    results[s,1] = paste0(varl[j],".", varl[i])
-    results[s,2] = length(intersect(a$windID,b$windID))
-    
-    s = s + 1
-  }
-}
-
-write.table(results,"countGCTA_GCTA.txt")
-
-```
-
-Number of common windows between traits and bf
-```{r}
-s = 1
-results = data.frame(name = numeric(), count = numeric())
-for(j in 1:length(varl_bf)){
-  for(i in 1:length(varl)){
-    a = dat_bf %>% filter(var==varl_bf[j])
-    b = dat_gcta %>% filter(var==varl[i])
-    
-    results[s,1] = paste0(varl_bf[j],".", varl[i])
-    results[s,2] = length(intersect(a$windID,b$windID))
-    
-    s = s + 1
-  }
-}
-
-write.table(results,"countGCTA_bf.txt")
-```
-
-Number of common windows between traits and bfNA
-```{r}
-dat_bfna = dat_bf %>% filter(range=="na") %>% droplevels()
-varl_bfna = levels(dat_bfna$var)
-s = 1
-results = data.frame(name = numeric(), count = numeric())
-for(j in 1:length(varl_bfna)){
-  for(i in 1:length(varl)){
-    a = dat_bfna %>% filter(var==varl_bfna[j])
-    b = dat_gcta %>% filter(var==varl[i])
-    
-    results[s,1] = paste0(varl_bfna[j],".", varl[i])
-    results[s,2] = length(intersect(a$windID,b$windID))
-    
-    s = s + 1
-  }
-}
-
-write.table(results,"countGCTA_bfNA.txt")
-```
-
-Number of common windows between traits and bfNA
-```{r}
-dat_bfeu = dat_bf %>% filter(range=="eu") %>% droplevels()
-varl_bfeu = levels(dat_bfeu$var)
-s = 1
-results = data.frame(name = numeric(), count = numeric())
-for(j in 1:length(varl_bfeu)){
-  for(i in 1:length(varl)){
-    a = dat_bfeu %>% filter(var==varl_bfeu[j])
-    b = dat_gcta %>% filter(var==varl[i])
-    
-    results[s,1] = paste0(varl_bfeu[j],".", varl[i])
-    results[s,2] = length(intersect(a$windID,b$windID))
-    
-    s = s + 1
-  }
-}
-
-write.table(results,"countGCTA_bfEU.txt")
-```
-
-```{r}
-dat_bfau = dat_bf %>% filter(range=="au") %>% droplevels()
-varl_bfau = levels(dat_bfau$var)
-s = 1
-results = data.frame(name = numeric(), count = numeric())
-for(j in 1:length(varl_bfau)){
-  for(i in 1:length(varl)){
-    a = dat_bfau %>% filter(var==varl_bfau[j])
-    b = dat_gcta %>% filter(var==varl[i])
-    
-    results[s,1] = paste0(varl_bfau[j],".", varl[i])
-    results[s,2] = length(intersect(a$windID,b$windID))
-    
-    s = s + 1
-  }
-}
-
-write.table(results,"countGCTA_bfAU.txt")
-```
-
 
 
 ##END SCRIPT###
