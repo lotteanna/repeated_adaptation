@@ -12,6 +12,7 @@ library("reshape")#melt
 library("car") #Anova
 library(gdata)
 library(VennDiagram)
+library(ggrepel)
 ```
 
 Calculate probability of overlap
@@ -371,7 +372,7 @@ call =rbind(N_E, N_A, E_A)
 ```{r}
 call = call %>% filter(! env %in% c("dem"))
 
-pdf("_Graph/env_binomnullw99_rangeoverlap.pdf", height=3.5, width=7)
+pdf("env_binomnullw993_rangeoverlap.pdf", height=3.5, width=7)
 ggplot(call,aes(env, overlap, fill=comparison))+
   geom_bar(stat="identity",position='dodge') +
   geom_bar(data = call, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
@@ -379,7 +380,7 @@ dev.off()
 
 call_sub = call %>% filter( env %in% c("bio1","bio2", "bio5", "bio10","bio11", "Latitude", "Longitude"))
 
-pdf("_Graph/env_binomnullw99_rangeoverlap_sub.pdf", height=3.5, width=3.5)
+pdf("env_binomnullw993_rangeoverlap_sub.pdf", height=3.5, width=3.5)
 ggplot(call_sub,aes(env, overlap, fill=comparison))+
   geom_bar(stat="identity",position='dodge') +
   geom_bar(data = call_sub, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+ scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+scale_y_continuous(limits=c(0,45))
@@ -399,7 +400,7 @@ call =rbind(N_E, N_A, E_A)
 ```{r}
 call = call %>% filter(! env %in% c("dem"))
 
-pdf("_Graph/env_binom99_rangeoverlap.pdf", height=3.5, width=7)
+pdf("env_binom993_rangeoverlap.pdf", height=3.5, width=7)
 ggplot(call,aes(env, overlap, fill=comparison))+
   geom_bar(stat="identity",position='dodge') +
   geom_bar(data = call, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
@@ -407,7 +408,7 @@ dev.off()
 
 call_sub = call %>% filter( env %in% c("bio1","bio2", "bio5", "bio10","bio11", "Latitude", "Longitude"))
 
-pdf("_Graph/env_binom99_rangeoverlap_sub.pdf", height=3.5, width=3.5)
+pdf("env_binom993_rangeoverlap_sub.pdf", height=3.5, width=3.5)
 ggplot(call_sub,aes(env, overlap, fill=comparison))+
   geom_bar(stat="identity",position='dodge') +
   geom_bar(data = call_sub, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+scale_y_continuous(limits=c(0,45))
@@ -417,23 +418,30 @@ dev.off()
 for windows
 ---
 ```{r}
-win_na = read.table("bf_90miss_99bf3/sresbfall_na_1000_993_90miss.txt", header=T)
-win_eu = read.table("bf_90miss_99bf3/sresbfall_eu_1000_993_90miss.txt", header=T)
-win_au = read.table("bf_90miss_99bf3/sresbfall_au_1000_993_90miss.txt", header=T)
+bfn_all = read.table("bf_90miss_99bf3/mbf_1000_993_binnullW_90miss.txt", header=T)
 
-win_nasub = dplyr::select(win_na, contig, win.start, envvar, topcan_q)
-win_eusub = dplyr::select(win_eu, contig, win.start, envvar, topcan_q)
-win_ausub = dplyr::select(win_au, contig, win.start, envvar, topcan_q)
+bf_all_sup = bfn_all %>%
+  filter(qbinom=="yes") %>% 
+  select(windID, env, Range) %>% 
+  droplevels()
 
-malldataw = combine(win_nasub,win_eusub, win_ausub) #package gdata (doesn't work in combination with other packages)
-malldataw_high <- malldataw[which(malldataw$topcan_q=="TRUE"),]
+colnames(outlw2) = c("Environment","NorthAmerica","Europe","Australia")
+write.table(outlw2, "bfwindbinom_outliersperrange.txt")
+outlw2 = read.table("bfwindbinom_outliersperrange.txt", header=T)
 
-outlw <- as.data.frame(table(malldataw_high$envvar, malldataw_high$source))
+#with null-W
+bf_all_sup = bfn_all %>%
+  filter(binnullw=="yes") %>% 
+  select(windID, env, Range) %>% 
+  droplevels()
+
+outlw <- as.data.frame(table(bfn_all_sup$env, bfn_all_sup$Range))
 colnames(outlw) <- c("Environment", "Range", "windows")
 outlw2 <- spread(outlw,  Range, windows)
+
 colnames(outlw2) = c("Environment","NorthAmerica","Europe","Australia")
-write.table(outlw2, "../bfwindbinom_outliersperrange.txt")
-outlw2 = read.table("bfwindbinom_outliersperrange.txt", header=T)
+write.table(outlw2, "bfwindnullw_outliersperrange.txt")
+outlw2nullw = read.table("bfwindnullw_outliersperrange.txt", header=T)
 ```
 
 *plot outliers env* S4
@@ -448,6 +456,13 @@ ggplot(outlw2, aes(x=NorthAmerica, y=Europe, colour=as.factor(outlwNAEU), shape=
   geom_text_repel()
 dev.off()
 
+ggplot(outlw2nullw, aes(x=NorthAmerica, y=Europe, colour=as.factor(outlwNAEU), shape=as.factor(outlwNAEU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  xlab("Number of outlier windows\n in North America (native)") +
+  ylab("Number of outlier windows\n in Europe (introduced)") +
+  geom_text_repel()
+
 pdf("_Graph/envoutl_binomwin_NAAU.pdf", height=4, width=4)
 ggplot(outlw2, aes(x=NorthAmerica, y=Australia, colour=as.factor(outlwNAAU), shape=as.factor(outlwNAAU),label=Code)) + 
   geom_point() +
@@ -456,6 +471,13 @@ ggplot(outlw2, aes(x=NorthAmerica, y=Australia, colour=as.factor(outlwNAAU), sha
   ylab("Number of binomial outlier windows\n in Australia (introduced)") +
   geom_text_repel()
 dev.off()
+
+ggplot(outlw2nullw, aes(x=NorthAmerica, y=Australia, colour=as.factor(outlwNAAU), shape=as.factor(outlwNAAU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  xlab("Number of outlier windows\n in North America (native)") +
+  ylab("Number of outlier windows\n in Australia (introduced)") +
+  geom_text_repel()
 
 pdf("_Graph/envoutl_binomwin_EUAU.pdf", height=4, width=4)
 ggplot(outlw2, aes(y=Australia, x=Europe, colour=as.factor(outlwEUAU), shape=as.factor(outlwEUAU),label=Code)) + 
@@ -466,6 +488,12 @@ ggplot(outlw2, aes(y=Australia, x=Europe, colour=as.factor(outlwEUAU), shape=as.
   geom_text_repel()
 dev.off()
 
+ggplot(outlw2, aes(y=Australia, x=Europe, colour=as.factor(outlwEUAU), shape=as.factor(outlwEUAU),label=Code)) + 
+  geom_point() +
+  theme_bw() +    theme(panel.grid.minor = element_blank(),  legend.position = "none")+ 
+  ylab("Number of outlier windows\n in Australia (introduced)") +
+  xlab("Number of outlier windows\n in Europe (introduced)") +
+  geom_text_repel()
 ```
 
 
