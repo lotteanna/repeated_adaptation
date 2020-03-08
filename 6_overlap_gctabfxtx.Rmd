@@ -375,7 +375,7 @@ call = call %>% filter(! env %in% c("dem"))
 pdf("env_binomnullw993_rangeoverlap.pdf", height=3.5, width=7)
 ggplot(call,aes(env, overlap, fill=comparison))+
   geom_bar(stat="identity",position='dodge') +
-  geom_bar(data = call, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+  geom_bar(data = call, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA outliers")+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
 dev.off()
 
 call_sub = call %>% filter( env %in% c("bio1","bio2", "bio5", "bio10","bio11", "Latitude", "Longitude"))
@@ -383,7 +383,7 @@ call_sub = call %>% filter( env %in% c("bio1","bio2", "bio5", "bio10","bio11", "
 pdf("env_binomnullw993_rangeoverlap_sub.pdf", height=3.5, width=3.5)
 ggplot(call_sub,aes(env, overlap, fill=comparison))+
   geom_bar(stat="identity",position='dodge') +
-  geom_bar(data = call_sub, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA top 1% outliers")+ scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+scale_y_continuous(limits=c(0,45))
+  geom_bar(data = call_sub, aes(env, q99, fill = comparison),stat = 'identity',position="dodge", alpha=0, size=.1, color="black")+ theme_bw() + xlab("Environmental variable")+ theme(axis.text.x  = element_text(angle=45, hjust=1,size=8)) +  ylab("Number of EAA outliers")+ scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+scale_y_continuous(limits=c(0,45))
 dev.off()
 ```
 
@@ -435,7 +435,7 @@ bf_all_sup = bfn_all %>%
   select(windID, env, Range) %>% 
   droplevels()
 
-outlw <- as.data.frame(table(bfn_all_sup$env, bfn_all_sup$Range))
+outlw <- as.data.frame(table(bf_all_sup$env, bf_all_sup$Range))
 colnames(outlw) <- c("Environment", "Range", "windows")
 outlw2 <- spread(outlw,  Range, windows)
 

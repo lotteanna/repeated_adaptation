@@ -39,7 +39,7 @@ bfdat_na <- read.table("logbf_na_ddgbs.txt",header=T)
 bfdat_eu <- read.table("logbf_eu_ddgbs.txt",header=T)
 bfdat_au <- read.table("logbf_au_ddgbs.txt",header=T)
 
-loci70 <- read.table("locinames.csv")
+loci70 <- read_csv("locinames.csv")
 
 ```
 
@@ -61,7 +61,7 @@ bf_au$contig <- as.factor(bf_au$contig)
 
 Subset for 70% missing data
 ```{r}
-#bf_all70 <- left_join(loci70, bf_all, by = c("contig", "location"))
+bf_all70 <- left_join(loci70, bf_all, by = c("contig", "location"))
 bf_na70 <- left_join(loci70, bf_na, by = c("contig", "location"))
 bf_eu70 <- left_join(loci70, bf_eu, by = c("contig", "location"))
 bf_au70 <- left_join(loci70, bf_au, by = c("contig", "location"))
@@ -72,6 +72,113 @@ bf_au70 <- left_join(loci70, bf_au, by = c("contig", "location"))
 ---  
 
 Outlier window where slide is based on position on the contig (so not SNP).
+```{r}
+mdata= melt(bf_all70, id=c("contig", "location", "length"))
+mdata = mdata %>% filter(variable!="dem_all") %>% droplevels()
+mdata$myrank = rank(mdata$value)/length(mdata$value)
+mdata_lat = mdata[which(mdata$variable=="Latitude_all"),]
+mdata_lon = mdata[which(mdata$variable=="Longitude_all"),]
+mdata_bio4 = mdata[which(mdata$variable=="bio4_all"),]
+mdata_bio17 = mdata[which(mdata$variable=="bio17_all"),]
+mdata_bio15 = mdata[which(mdata$variable=="bio15_all"),]
+mdata_bio12 = mdata[which(mdata$variable=="bio12_all"),]
+mdata_bio19 = mdata[which(mdata$variable=="bio19_all"),]
+mdata_bio10 = mdata[which(mdata$variable=="bio10_all"),]
+mdata_bio3 = mdata[which(mdata$variable=="bio3_all"),]
+mdata_bio1 = mdata[which(mdata$variable=="bio1_all"),]
+mdata_bio14 = mdata[which(mdata$variable=="bio14_all"),]
+mdata_bio7 = mdata[which(mdata$variable=="bio7_all"),]
+mdata_bio13 = mdata[which(mdata$variable=="bio13_all"),]
+mdata_bio18 = mdata[which(mdata$variable=="bio18_all"),]
+mdata_bio2 = mdata[which(mdata$variable=="bio2_all"),]
+mdata_bio8 = mdata[which(mdata$variable=="bio8_all"),]
+mdata_bio5 = mdata[which(mdata$variable=="bio5_all"),]
+mdata_bio11 = mdata[which(mdata$variable=="bio11_all"),]
+mdata_alt = mdata[which(mdata$variable=="alt_all"),]
+mdata_bio9 = mdata[which(mdata$variable=="bio9_all"),]
+mdata_bio6 = mdata[which(mdata$variable=="bio6_all"),]
+mdata_bio16 = mdata[which(mdata$variable=="bio16_all"),]
+
+mdata2= melt(bf_na70, id=c("contig", "location", "length"))
+mdata2 = mdata2 %>% filter(variable!="dem_all") %>% droplevels()
+mdata2$myrank = rank(mdata2$value)/length(mdata2$value)
+mdata2_lat = mdata2[which(mdata2$variable=="Latitude_all"),]
+mdata2_lon = mdata2[which(mdata2$variable=="Longitude_all"),]
+mdata2_bio4 = mdata2[which(mdata2$variable=="bio4_all"),]
+mdata2_bio17 = mdata2[which(mdata2$variable=="bio17_all"),]
+mdata2_bio15 = mdata2[which(mdata2$variable=="bio15_all"),]
+mdata2_bio12 = mdata2[which(mdata2$variable=="bio12_all"),]
+mdata2_bio19 = mdata2[which(mdata2$variable=="bio19_all"),]
+mdata2_bio10 = mdata2[which(mdata2$variable=="bio10_all"),]
+mdata2_bio3 = mdata2[which(mdata2$variable=="bio3_all"),]
+mdata2_bio1 = mdata2[which(mdata2$variable=="bio1_all"),]
+mdata2_bio14 = mdata2[which(mdata2$variable=="bio14_all"),]
+mdata2_bio7 = mdata2[which(mdata2$variable=="bio7_all"),]
+mdata2_bio13 = mdata2[which(mdata2$variable=="bio13_all"),]
+mdata2_bio18 = mdata2[which(mdata2$variable=="bio18_all"),]
+mdata2_bio2 = mdata2[which(mdata2$variable=="bio2_all"),]
+mdata2_bio8 = mdata2[which(mdata2$variable=="bio8_all"),]
+mdata2_bio5 = mdata2[which(mdata2$variable=="bio5_all"),]
+mdata2_bio11 = mdata2[which(mdata2$variable=="bio11_all"),]
+mdata2_alt = mdata2[which(mdata2$variable=="alt_all"),]
+mdata2_bio9 = mdata2[which(mdata2$variable=="bio9_all"),]
+mdata2_bio6 = mdata2[which(mdata2$variable=="bio6_all"),]
+mdata2_bio16 = mdata2[which(mdata2$variable=="bio16_all"),]
+
+mdata3= melt(bf_eu70, id=c("contig", "location", "length"))
+mdata3 = mdata3 %>% filter(variable!="dem_all") %>% droplevels()
+mdata3$myrank = rank(mdata3$value)/length(mdata3$value)
+mdata3_lat = mdata3[which(mdata3$variable=="Latitude_all"),]
+mdata3_lon = mdata3[which(mdata3$variable=="Longitude_all"),]
+mdata3_bio4 = mdata3[which(mdata3$variable=="bio4_all"),]
+mdata3_bio17 = mdata3[which(mdata3$variable=="bio17_all"),]
+mdata3_bio15 = mdata3[which(mdata3$variable=="bio15_all"),]
+mdata3_bio12 = mdata3[which(mdata3$variable=="bio12_all"),]
+mdata3_bio19 = mdata3[which(mdata3$variable=="bio19_all"),]
+mdata3_bio10 = mdata3[which(mdata3$variable=="bio10_all"),]
+mdata3_bio3 = mdata3[which(mdata3$variable=="bio3_all"),]
+mdata3_bio1 = mdata3[which(mdata3$variable=="bio1_all"),]
+mdata3_bio14 = mdata3[which(mdata3$variable=="bio14_all"),]
+mdata3_bio7 = mdata3[which(mdata3$variable=="bio7_all"),]
+mdata3_bio13 = mdata3[which(mdata3$variable=="bio13_all"),]
+mdata3_bio18 = mdata3[which(mdata3$variable=="bio18_all"),]
+mdata3_bio2 = mdata3[which(mdata3$variable=="bio2_all"),]
+mdata3_bio8 = mdata3[which(mdata3$variable=="bio8_all"),]
+mdata3_bio5 = mdata3[which(mdata3$variable=="bio5_all"),]
+mdata3_bio11 = mdata3[which(mdata3$variable=="bio11_all"),]
+mdata3_alt = mdata3[which(mdata3$variable=="alt_all"),]
+mdata3_bio9 = mdata3[which(mdata3$variable=="bio9_all"),]
+mdata3_bio6 = mdata3[which(mdata3$variable=="bio6_all"),]
+mdata3_bio16 = mdata3[which(mdata3$variable=="bio16_all"),]
+
+mdata4= melt(bf_au70, id=c("contig", "location", "length"))
+mdata4 = mdata4 %>% filter(variable!="dem_all") %>% droplevels()
+mdata4$myrank = rank(mdata4$value)/length(mdata4$value)
+mdata4_lat = mdata4[which(mdata4$variable=="Latitude_all"),]
+mdata4_lon = mdata4[which(mdata4$variable=="Longitude_all"),]
+mdata4_bio4 = mdata4[which(mdata4$variable=="bio4_all"),]
+mdata4_bio17 = mdata4[which(mdata4$variable=="bio17_all"),]
+mdata4_bio15 = mdata4[which(mdata4$variable=="bio15_all"),]
+mdata4_bio12 = mdata4[which(mdata4$variable=="bio12_all"),]
+mdata4_bio19 = mdata4[which(mdata4$variable=="bio19_all"),]
+mdata4_bio10 = mdata4[which(mdata4$variable=="bio10_all"),]
+mdata4_bio3 = mdata4[which(mdata4$variable=="bio3_all"),]
+mdata4_bio1 = mdata4[which(mdata4$variable=="bio1_all"),]
+mdata4_bio14 = mdata4[which(mdata4$variable=="bio14_all"),]
+mdata4_bio7 = mdata4[which(mdata4$variable=="bio7_all"),]
+mdata4_bio13 = mdata4[which(mdata4$variable=="bio13_all"),]
+mdata4_bio18 = mdata4[which(mdata4$variable=="bio18_all"),]
+mdata4_bio2 = mdata4[which(mdata4$variable=="bio2_all"),]
+mdata4_bio8 = mdata4[which(mdata4$variable=="bio8_all"),]
+mdata4_bio5 = mdata4[which(mdata4$variable=="bio5_all"),]
+mdata4_bio11 = mdata4[which(mdata4$variable=="bio11_all"),]
+mdata4_alt = mdata4[which(mdata4$variable=="alt_all"),]
+mdata4_bio9 = mdata4[which(mdata4$variable=="bio9_all"),]
+mdata4_bio6 = mdata4[which(mdata4$variable=="bio6_all"),]
+mdata4_bio16 = mdata4[which(mdata4$variable=="bio16_all"),]
+
+test = mdata2[c(1:1000,100000:101000,200000:201000),]
+```
 
 
 ```{r}
@@ -270,74 +377,74 @@ outlier.window <- function(data, output, top){
 Call function for the different datasets
 ```{r}
 
-outlier.window(mdata2_lat, "bflat_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_lon, "bflon_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_alt, "bfalt_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio1, "bfbio1_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio10, "bfbio10_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio11, "bfbio11_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio12, "bfbio12_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio13, "bfbio13_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio14, "bfbio14_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio15, "bfbio15_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio16, "bfbio16_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio17, "bfbio17_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio18, "bfbio18_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio19, "bfbio19_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio2, "bfbio2_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio3, "bfbio3_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio4, "bfbio4_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio5, "bfbio5_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio6, "bfbio6_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio7, "bfbio7_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio8, "bfbio8_na_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata2_bio9, "bfbio9_na_1000-1000_bf993_allwinds",0.99)
+outlier.window(mdata2_lat, "bflat_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_lon, "bflon_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_alt, "bfalt_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio1, "bfbio1_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio10, "bfbio10_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio11, "bfbio11_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio12, "bfbio12_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio13, "bfbio13_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio14, "bfbio14_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio15, "bfbio15_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio16, "bfbio16_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio17, "bfbio17_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio18, "bfbio18_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio19, "bfbio19_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio2, "bfbio2_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio3, "bfbio3_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio4, "bfbio4_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio5, "bfbio5_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio6, "bfbio6_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio7, "bfbio7_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio8, "bfbio8_na_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata2_bio9, "bfbio9_na_1000-1000_bf993_miss70_allwinds",0.99)
 
-outlier.window(mdata3_lat, "bflat_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_lon, "bflon_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_alt, "bfalt_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio1, "bfbio1_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio10, "bfbio10_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio11, "bfbio11_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio12, "bfbio12_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio13, "bfbio13_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio14, "bfbio14_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio15, "bfbio15_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio16, "bfbio16_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio17, "bfbio17_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio18, "bfbio18_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio19, "bfbio19_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio2, "bfbio2_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio3, "bfbio3_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio4, "bfbio4_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio5, "bfbio5_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio6, "bfbio6_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio7, "bfbio7_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio8, "bfbio8_eu_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata3_bio9, "bfbio9_eu_1000-1000_bf993_allwinds",0.99)
+outlier.window(mdata3_lat, "bflat_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_lon, "bflon_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_alt, "bfalt_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio1, "bfbio1_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio10, "bfbio10_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio11, "bfbio11_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio12, "bfbio12_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio13, "bfbio13_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio14, "bfbio14_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio15, "bfbio15_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio16, "bfbio16_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio17, "bfbio17_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio18, "bfbio18_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio19, "bfbio19_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio2, "bfbio2_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio3, "bfbio3_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio4, "bfbio4_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio5, "bfbio5_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio6, "bfbio6_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio7, "bfbio7_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio8, "bfbio8_eu_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata3_bio9, "bfbio9_eu_1000-1000_bf993_miss70_allwinds",0.99)
 
-outlier.window(mdata4_lat, "bflat_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_lon, "bflon_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_alt, "bfalt_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio1, "bfbio1_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio10, "bfbio10_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio11, "bfbio11_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio12, "bfbio12_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio13, "bfbio13_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio14, "bfbio14_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio15, "bfbio15_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio16, "bfbio16_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio17, "bfbio17_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio18, "bfbio18_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio19, "bfbio19_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio2, "bfbio2_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio3, "bfbio3_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio4, "bfbio4_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio5, "bfbio5_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio6, "bfbio6_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio7, "bfbio7_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio8, "bfbio8_au_1000-1000_bf993_allwinds",0.99)
-outlier.window(mdata4_bio9, "bfbio9_au_1000-1000_bf993_allwinds",0.99)
+outlier.window(mdata4_lat, "bflat_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_lon, "bflon_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_alt, "bfalt_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio1, "bfbio1_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio10, "bfbio10_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio11, "bfbio11_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio12, "bfbio12_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio13, "bfbio13_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio14, "bfbio14_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio15, "bfbio15_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio16, "bfbio16_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio17, "bfbio17_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio18, "bfbio18_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio19, "bfbio19_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio2, "bfbio2_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio3, "bfbio3_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio4, "bfbio4_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio5, "bfbio5_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio6, "bfbio6_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio7, "bfbio7_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio8, "bfbio8_au_1000-1000_bf993_miss70_allwinds",0.99)
+outlier.window(mdata4_bio9, "bfbio9_au_1000-1000_bf993_miss70_allwinds",0.99)
 ```
 
 
@@ -373,6 +480,39 @@ list.files(pattern ="au_1000-1000_bf993_allwinds_SNPinfo") %>%
   map(read.table, header =T) %>%    
   reduce(rbind)  %>% 
   write.table("bfall_au_1000_bf993_90miss_SNPinfo")
+
+```
+
+```{r}
+list.files(pattern ="na_1000-1000_bf993_miss70_allwinds$") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_na_1000_bf993_70miss")
+
+list.files(pattern ="na_1000-1000_bf993_miss70_allwinds_SNPinfo") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_na_1000_bf993_70miss_SNPinfo")
+
+list.files(pattern ="eu_1000-1000_bf993_miss70_allwinds$") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_eu_1000_bf993_70miss")
+
+list.files(pattern ="eu_1000-1000_bf993_miss70_allwinds_SNPinfo") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_eu_1000_bf993_70miss_SNPinfo")
+
+list.files(pattern ="au_1000-1000_bf993_miss70_allwinds$") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_au_1000_bf993_70miss")
+
+list.files(pattern ="au_1000-1000_bf993_miss70_allwinds_SNPinfo") %>%
+  map(read.table, header =T) %>%    
+  reduce(rbind)  %>% 
+  write.table("bfall_au_1000_bf993_70miss_SNPinfo")
 
 ```
 

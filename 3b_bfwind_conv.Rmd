@@ -27,9 +27,9 @@ Read in data
 ```{r}
 
 
-results_testna <- read.table("bfall_na_1000_bf993_90miss", header=T)
-results_testeu <- read.table("bfall_eu_1000_bf993_90miss", header=T)
-results_testau <- read.table("bfall_au_1000_bf993_90miss", header=T)
+results_testna <- read.table("bfall_na_1000_bf993_70miss", header=T)
+results_testeu <- read.table("bfall_eu_1000_bf993_70miss", header=T)
+results_testau <- read.table("bfall_au_1000_bf993_70miss", header=T)
 ```
 
 

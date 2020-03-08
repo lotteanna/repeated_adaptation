@@ -1,0 +1,569 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+**Select LDNA SNPs**
+===
+
+
+```{r}
+library(dplyr)
+library(plyr)
+
+```
+
+Read in LD files
+---
+```{r}
+ldna = read.table("LD/infiles/na_ddGBS50.5.7_LD_infile")
+ldeu = read.table("LD/infiles/eu_ddGBS50.5.7_LD_infile")
+ldau = read.table("LD/infiles/au_ddGBS50.5.7_LD_infile")
+
+ldna$SNPID = paste(ldna[,1],ldna[,2],sep = "__")
+ldeu$SNPID = paste(ldeu[,1],ldeu[,2],sep = "__")
+ldau$SNPID = paste(ldau[,1],ldau[,2],sep = "__")
+```
+
+Read data winds
+---
+```{r}
+
+wind_na = read.table("bf_90miss_99bf3/sresbfall_na_1000_993_90miss.txt", header=T)
+wind_eu = read.table("bf_90miss_99bf3/sresbfall_eu_1000_993_90miss.txt", header=T)
+wind_au = read.table("bf_90miss_99bf3/sresbfall_au_1000_993_90miss.txt", header=T)
+
+#wind_na = read.table("bf_1000_99_allwind/sresbfall_na_1000_99_allwind.txt", header=T)
+#wind_eu = read.table("bf_1000_99_allwind/sresbfall_eu_1000_99_allwind.txt", header=T)
+#wind_au = read.table("bf_1000_99_allwind/sresbfall_au_1000_99_allwind.txt", header=T)
+
+xwind_na = read.table("xtx_1000_99_allwind/sres1000-1000_na99_allwinds", header=T)
+xwind_eu = read.table("xtx_1000_99_allwind/sres1000-1000_eu99_allwinds", header=T)
+xwind_au = read.table("xtx_1000_99_allwind/sres1000-1000_au99_allwinds", header=T)
+xwind_na$windID = paste0(xwind_na$contig, "__", xwind_na$win.start)
+xwind_eu$windID = paste0(xwind_eu$contig, "__", xwind_eu$win.start)
+xwind_au$windID = paste0(xwind_au$contig, "__", xwind_au$win.start)
+wind_na$windID = paste0(wind_na$contig, "__", wind_na$win.start)
+wind_eu$windID = paste0(wind_eu$contig, "__", wind_eu$win.start)
+wind_au$windID = paste0(wind_au$contig, "__", wind_au$win.start)
+
+allwindows1 = read.table("xtx_1000_99_allwind/xtxall_1000-1000_top99_allwinds", header=T)
+allSNPS1 = read.table("xtx_1000_99_allwind/xtxall_1000-1000_top99_allwinds_SNPinfo", header=T)
+allwindows = dplyr::select(allwindows1, contig, win.start)
+allSNPS = dplyr::select(allSNPS1, contig, location, win.start)
+allwindows$windID = paste0(allwindows$contig, "__", allwindows$win.start)
+
+allSNPS$windID = paste0(allSNPS$contig, "__", allSNPS$win.start)
+allSNPS$sub1 = paste0(allSNPS$contig, "__",allSNPS$location)
+allSNPS$sub2 = paste0(allSNPS$contig, "__",allSNPS$location)
+
+
+
+
+bfn_sup = read.table("bf_90miss_99bf3/mbf_1000_993_binnullW_90miss.txt", header=T)
+
+#bfn_sup = read.table("bf_1000_99_allwind/mbf_1000_99_binnullW.txt", header=T)
+xtxn_sup = read.table("xtx_1000_99_allwind/mxtx_1000_99_binnullW.txt", header=T)
+
+bfn_sup_NA = bfn_sup %>% filter(Range=="nat"& qbinom=="yes") %>% droplevels()
+bfn_sup_EU = bfn_sup %>% filter(Range=="eu"& qbinom=="yes") %>% droplevels()
+bfn_sup_AU = bfn_sup %>% filter(Range=="au"& qbinom=="yes") %>% droplevels()
+xn_sup_NA = xtxn_sup %>% filter(Range=="nat"& binom=="yes") %>% droplevels()
+xn_sup_EU = xtxn_sup %>% filter(Range=="EU"&binom=="yes") %>% droplevels()
+xn_sup_AU = xtxn_sup %>% filter(Range=="AU"&binom=="yes") %>% droplevels()
+
+bfnw_sup_NA = bfn_sup %>% filter(Range=="nat"& null.W=="yes") %>% droplevels()
+bfnw_sup_EU = bfn_sup %>% filter(Range=="eu"& null.W=="yes") %>% droplevels()
+bfnw_sup_AU = bfn_sup %>% filter(Range=="au"& null.W=="yes") %>% droplevels()
+xnw_sup_NA = xtxn_sup %>% filter(Range=="nat"& binnullw=="yes") %>% droplevels()
+xnw_sup_EU = xtxn_sup %>% filter(Range=="EU"&binnullw=="yes") %>% droplevels()
+xnw_sup_AU = xtxn_sup %>% filter(Range=="AU"&binnullw=="yes") %>% droplevels()
+
+xsnp_na <- read.table("xtx_1000_99_allwind/xtxna_1000-1000_top99_allwinds_SNPinfo",header = T)
+xsnp_na$sub1 <- paste0(xsnp_na$contig,"__", xsnp_na$location)
+xsnp_na$sub2 <- xsnp_na$sub1
+xsnp_na$windID = paste0(xsnp_na$contig, "__", xsnp_na$win.start)
+
+xsnp_eu <- read.table("xtx_1000_99_allwind/xtxeu_1000-1000_top99_allwinds_SNPinfo",header = T)
+xsnp_eu$sub1 <- paste0(xsnp_eu$contig,"__", xsnp_eu$location)
+xsnp_eu$sub2 <- xsnp_eu$sub1
+xsnp_eu$windID = paste0(xsnp_eu$contig, "__", xsnp_eu$win.start)
+
+xsnp_au <- read.table("xtx_1000_99_allwind/xtxau_1000-1000_top99_allwinds_SNPinfo",header = T)
+xsnp_au$sub1 <- paste0(xsnp_au$contig,"__", xsnp_au$location)
+xsnp_au$sub2 <- xsnp_au$sub1
+xsnp_au$windID = paste0(xsnp_au$contig, "__", xsnp_au$win.start)
+
+bsnp_na <- read.table("bf_90miss_99bf3/bfall_na_1000_bf993_90miss_SNPinfo",header = T)
+bsnp_na$sub1 <- paste0(bsnp_na$contig,"__", bsnp_na$location)
+bsnp_na$sub2 <- bsnp_na$sub1
+bsnp_na$windID = paste0(bsnp_na$contig, "__", bsnp_na$win.start)
+
+bsnp_eu <- read.table("bf_90miss_99bf3/bfall_eu_1000_bf993_90miss_SNPinfo",header = T)
+bsnp_eu$sub1 <- paste0(bsnp_eu$contig,"__", bsnp_eu$location)
+bsnp_eu$sub2 <- bsnp_eu$sub1
+bsnp_eu$windID = paste0(bsnp_eu$contig, "__", bsnp_eu$win.start)
+
+bsnp_au <- read.table("bf_90miss_99bf3/bfall_au_1000_bf993_90miss_SNPinfo",header = T)
+bsnp_au$sub1 <- paste0(bsnp_au$contig,"__", bsnp_au$location)
+bsnp_au$sub2 <- bsnp_au$sub1
+bsnp_au$windID = paste0(bsnp_au$contig, "__", bsnp_au$win.start)
+```
+
+Window has to have hit in at least 2 methods within a range (based on binom )
+---
+```{r}
+#binom
+bfn_sup_NAall = as.data.frame(levels(as.factor(bfn_sup_NA$windID)))
+colnames(bfn_sup_NAall) = "windID"
+xn_sup_NAall = dplyr::select(xn_sup_NA, windID)
+bfn_sup_EUall = as.data.frame(levels(as.factor(bfn_sup_EU$windID)))
+colnames(bfn_sup_EUall) = "windID"
+xn_sup_EUall = dplyr::select(xn_sup_EU, windID)
+bfn_sup_AUall = as.data.frame(levels(as.factor(bfn_sup_AU$windID)))
+colnames(bfn_sup_AUall) = "windID"
+xn_sup_AUall = dplyr::select(xn_sup_AU, windID)
+
+bfxtx_sup_NA = intersect(xn_sup_NAall$windID, bfn_sup_NAall$windID)
+bfxtx_sup_AU = intersect(xn_sup_AUall$windID, bfn_sup_AUall$windID)
+bfxtx_sup_EU = intersect(xn_sup_EUall$windID, bfn_sup_EUall$windID)
+
+#nullw
+bfnw_sup_NAall = as.data.frame(levels(as.factor(bfnw_sup_NA$windID)))
+colnames(bfnw_sup_NAall) = "windID"
+xnw_sup_NAall = dplyr::select(xnw_sup_NA, windID)
+bfnw_sup_EUall = as.data.frame(levels(as.factor(bfnw_sup_EU$windID)))
+colnames(bfnw_sup_EUall) = "windID"
+xnw_sup_EUall = dplyr::select(xnw_sup_EU, windID)
+bfnw_sup_AUall = as.data.frame(levels(as.factor(bfnw_sup_AU$windID)))
+colnames(bfnw_sup_AUall) = "windID"
+xnw_sup_AUall = dplyr::select(xnw_sup_AU, windID)
+
+bfxtx_supw_NA = intersect(xnw_sup_NAall$windID, bfnw_sup_NAall$windID)
+bfxtx_supw_AU = intersect(xnw_sup_AUall$windID, bfnw_sup_AUall$windID)
+bfxtx_supw_EU = intersect(xnw_sup_EUall$windID, bfnw_sup_EUall$windID)
+
+#found in at least 1 methods
+wind_overlaptop_na_1m = rbind(bfn_sup_NAall, xn_sup_NAall)
+wind_overlaptop_eu_1m = rbind(bfn_sup_EUall, xn_sup_EUall)
+wind_overlaptop_au_1m = rbind(bfn_sup_AUall, xn_sup_AUall)
+
+wind_overlaptopw_na_1m = rbind(bfnw_sup_NAall, xnw_sup_NAall)
+wind_overlaptopw_eu_1m = rbind(bfnw_sup_EUall, xnw_sup_EUall)
+wind_overlaptopw_au_1m = rbind(bfnw_sup_AUall, xnw_sup_AUall)
+
+write.table(wind_overlaptop_na_1m, "wind_overlaptop_na_1m_993")
+write.table(wind_overlaptop_eu_1m, "wind_overlaptop_eu_1m_993")
+write.table(wind_overlaptop_au_1m, "wind_overlaptop_au_1m_993")
+
+write.table(wind_overlaptopw_na_1m, "wind_overlaptop_na_nullw_1m_993")
+write.table(wind_overlaptopw_eu_1m, "wind_overlaptop_eu_nullw_1m_993")
+write.table(wind_overlaptopw_au_1m, "wind_overlaptop_au_nullw_1m_993")
+
+#found in 2 methods
+wind_overlaptop_na_2m = as.data.frame(bfxtx_sup_NA)
+wind_overlaptop_eu_2m = as.data.frame(bfxtx_sup_EU)
+wind_overlaptop_au_2m = as.data.frame(bfxtx_sup_AU)
+
+colnames(wind_overlaptop_na_2m) = "windID"
+colnames(wind_overlaptop_eu_2m) = "windID"
+colnames(wind_overlaptop_au_2m) = "windID"
+
+write.table(wind_overlaptop_na_2m, "wind_overlaptop_na_2m_993")
+write.table(wind_overlaptop_eu_2m, "wind_overlaptop_eu_2m_993")
+write.table(wind_overlaptop_au_2m, "wind_overlaptop_au_2m_993")
+
+wind_overlaptop_naw_2m = as.data.frame(bfxtx_supw_NA)
+wind_overlaptop_euw_2m = as.data.frame(bfxtx_supw_EU)
+wind_overlaptop_auw_2m = as.data.frame(bfxtx_supw_AU)
+
+colnames(wind_overlaptop_naw_2m) = "windID"
+colnames(wind_overlaptop_euw_2m) = "windID"
+colnames(wind_overlaptop_auw_2m) = "windID"
+
+write.table(wind_overlaptop_naw_2m, "wind_overlaptop_na_nullw_2m_993")
+write.table(wind_overlaptop_euw_2m, "wind_overlaptop_eu_nullw_2m_993")
+write.table(wind_overlaptop_auw_2m, "wind_overlaptop_au_nullw_2m_993")
+```
+
+Select random SNPs per window, NA
+---
+```{r}
+SNP_na_50 = dplyr::select(ldna,SNPID)
+SNP_na_50$sub1 = SNP_na_50$SNPID
+bsnp_na1 = bsnp_na %>% 
+  select(envvar, myrank, sub1, BF) 
+
+#filter xtx table (90% missing data) on SNPs with 50% missing data (LD was calculated on this)
+xsnp_na50 = semi_join(xsnp_na, SNP_na_50, by="sub1") 
+
+#filter this 50% missing XTX table for outlier windows only
+topSNP_na_2m50_x = semi_join(xsnp_na50, wind_overlaptop_na_2m, by="windID") 
+
+#add GEA ranking based on BF scores to this data
+topSNP_na_2m50_xb1 = right_join(bsnp_na1, topSNP_na_2m50_x, by="sub1")
+
+topSNP_na_2m50_xb2 = topSNP_na_2m50_xb1[which(topSNP_na_2m50_xb1$myrank.x>0.99&topSNP_na_2m50_xb1$myrank.y>0.99&topSNP_na_2m50_xb1$BF>3),]
+topSNP_na_2m50_xb3 = dplyr::select(topSNP_na_2m50_xb2, sub1, windID, contig, location)
+topSNP_na_2m50_xb = dplyr::distinct(topSNP_na_2m50_xb3)
+
+topSNP_na_2m50_rand =  ddply(topSNP_na_2m50_xb, ~windID, function(x){ ndf <- x[sample(nrow(x),1), ]})
+topSNP_na_2m50_rand$SNPID=topSNP_na_2m50_rand$sub1
+write.table(topSNP_na_2m50_rand, "topSNP_na_2m50_rand_bf3")
+
+#select non-outlier SNPs
+notopSNP_na_2m50_x = anti_join(xsnp_na50, wind_overlaptop_na_1m, by = "windID") 
+notopSNP_na_2m50_xb1 = right_join(bsnp_na1, notopSNP_na_2m50_x, by="sub1")
+
+tmp = notopSNP_na_2m50_xb1[which(notopSNP_na_2m50_xb1$myrank.x>0.99|notopSNP_na_2m50_xb1$BF>3),]
+tmp2 = dplyr::distinct(dplyr::select(tmp, sub1)) # SNPs that have BF>0.99 for any of the env
+notopSNP_na_2m50_xb2 = dplyr::distinct( dplyr::select(notopSNP_na_2m50_xb1, sub1, windID, contig, location, myrank.y))
+notopSNP_na_2m50_xb3 = anti_join(notopSNP_na_2m50_xb2, tmp2, by="sub1")
+notopSNP_na_2m50_xb4 = notopSNP_na_2m50_xb3[which(notopSNP_na_2m50_xb3$myrank.y<0.99),]
+notopSNP_na_2m50_xb = dplyr::select(notopSNP_na_2m50_xb4, sub1, windID, contig, location)
+
+notopSNP_na_2m50_rand =  ddply(notopSNP_na_2m50_xb, ~windID, function(x){ ndf <- x[sample(nrow(x),1), ]})
+notopSNP_na_2m50_rand$SNPID=notopSNP_na_2m50_rand$sub1
+
+write.table(notopSNP_na_2m50_rand, "notopSNP_na_2m50_rand_bf3")
+
+#select 1 window at random, used for statistical calculations?
+topSNP_na_2m50_randSW =  ddply(topSNP_na_2m50_rand, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+notopSNP_na_2m50_randSW =  ddply(notopSNP_na_2m50_rand, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+topSNP_na_2m50_randSW$SNPID=topSNP_na_2m50_randSW$sub1
+notopSNP_na_2m50_randSW$SNPID=notopSNP_na_2m50_randSW$sub1
+
+write.table(topSNP_na_2m50_randSW, "topSNP_na_2m50_randSW_bf3")
+write.table(notopSNP_na_2m50_randSW, "notopSNP_na_2m50_randSW_bf3")
+
+allSNP_na_50_rand =  ddply(xsnp_na50, ~windID, function(x){ ndf <- x[sample(nrow(x),1), ]})
+allSNP_na_50_rand$SNPID=allSNP_na_50_rand$sub1
+write.table(allSNP_na_50_rand, "LD/allSNP_na_50_rand_bf3")
+allSNP_na_50_randSW =  ddply(allSNP_na_50_rand, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+write.table(allSNP_na_50_randSW, "LD/allSNP_na_50_randSW_bf3")
+
+#get the SNPIDs of randomly selected SNPs
+allSNP_50_rand = dplyr::select(allSNP_na_50_rand, SNPID)
+allSNP_50_randSW = dplyr::select(allSNP_na_50_randSW, SNPID)
+write.table(allSNP_50_rand, "LD/allSNP_50_rand_bf3")
+write.table(allSNP_50_randSW, "LD/allSNP_50_randSW_bf3")
+
+topnotop_na_2m50_randSW =rbind(topSNP_na_2m50_randSW,notopSNP_na_2m50_randSW)
+write.table(topnotop_na_2m50_randSW, "LD/topnotop_na_2m50_randSW_bf3")
+
+```
+
+Select random SNPs per window, EU
+```{r}
+SNP_eu_50 = dplyr::select(ldna,SNPID)
+SNP_eu_50$sub1 = SNP_eu_50$SNPID
+bsnp_eu1 = bsnp_eu %>% 
+  select(envvar, myrank, sub1, BF) 
+
+#filter xtx table (90% missing data) on SNPs with 50% missing data (LD was calculated on this)
+xsnp_eu50 = semi_join(xsnp_eu, SNP_eu_50, by="sub1") 
+
+#filter this 50% missing XTX table for outlier windows only
+topSNP_eu_2m50_x = semi_join(xsnp_eu50, wind_overlaptop_eu_2m, by="windID") 
+
+#add GEA ranking based on BF scores to this data
+topSNP_eu_2m50_xb1 = right_join(bsnp_eu1, topSNP_eu_2m50_x, by="sub1")
+
+topSNP_eu_2m50_xb2 = topSNP_eu_2m50_xb1[which(topSNP_eu_2m50_xb1$myrank.x>0.99&topSNP_eu_2m50_xb1$myrank.y>0.99&topSNP_eu_2m50_xb1$BF>3),]
+topSNP_eu_2m50_xb3 = dplyr::select(topSNP_eu_2m50_xb2, sub1, windID, contig, location)
+topSNP_eu_2m50_xb = dplyr::distinct(topSNP_eu_2m50_xb3)
+
+topSNP_eu_2m50_rand =  ddply(topSNP_eu_2m50_xb, ~windID, function(x){ ndf <- x[sample(nrow(x),1), ]})
+topSNP_eu_2m50_rand$SNPID=topSNP_eu_2m50_rand$sub1
+write.table(topSNP_eu_2m50_rand, "topSNP_eu_2m50_rand_bf3")
+
+#select non-outlier SNPs
+notopSNP_eu_2m50_x = anti_join(xsnp_eu50, wind_overlaptop_eu_1m, by = "windID") 
+notopSNP_eu_2m50_xb1 = right_join(bsnp_eu1, notopSNP_eu_2m50_x, by="sub1")
+
+tmp = notopSNP_eu_2m50_xb1[which(notopSNP_eu_2m50_xb1$myrank.x>0.99|notopSNP_eu_2m50_xb1$BF>3),]
+tmp2 = dplyr::distinct(dplyr::select(tmp, sub1)) # SNPs that have BF>0.99 for any of the env
+notopSNP_eu_2m50_xb2 = dplyr::distinct( dplyr::select(notopSNP_eu_2m50_xb1, sub1, windID, contig, location, myrank.y))
+notopSNP_eu_2m50_xb3 = anti_join(notopSNP_eu_2m50_xb2, tmp2, by="sub1")
+notopSNP_eu_2m50_xb4 = notopSNP_eu_2m50_xb3[which(notopSNP_eu_2m50_xb3$myrank.y<0.99),]
+notopSNP_eu_2m50_xb = dplyr::select(notopSNP_eu_2m50_xb4, sub1, windID, contig, location)
+
+notopSNP_eu_2m50_rand =  ddply(notopSNP_eu_2m50_xb, ~windID, function(x){ ndf <- x[sample(nrow(x),1), ]})
+notopSNP_eu_2m50_rand$SNPID=notopSNP_eu_2m50_rand$sub1
+
+write.table(notopSNP_eu_2m50_rand, "notopSNP_eu_2m50_rand_bf3")
+
+#select 1 window at random, used for statistical calculations?
+topSNP_eu_2m50_randSW =  ddply(topSNP_eu_2m50_rand, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+notopSNP_eu_2m50_randSW =  ddply(notopSNP_eu_2m50_rand, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+topSNP_eu_2m50_randSW$SNPID=topSNP_eu_2m50_randSW$sub1
+notopSNP_eu_2m50_randSW$SNPID=notopSNP_eu_2m50_randSW$sub1
+
+write.table(topSNP_eu_2m50_randSW, "topSNP_eu_2m50_randSW_bf3")
+write.table(notopSNP_eu_2m50_randSW, "notopSNP_eu_2m50_randSW_bf3")
+
+allSNP_eu_50_rand =  ddply(xsnp_eu50, ~windID, function(x){ ndf <- x[sample(nrow(x),1), ]})
+allSNP_eu_50_rand$SNPID=allSNP_eu_50_rand$sub1
+write.table(allSNP_eu_50_rand, "LD/allSNP_eu_50_rand_bf3")
+allSNP_eu_50_randSW =  ddply(allSNP_eu_50_rand, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+write.table(allSNP_eu_50_randSW, "LD/allSNP_eu_50_randSW_bf3")
+
+#get the SNPIDs of randomly selected SNPs
+allSNP_50_rand = dplyr::select(allSNP_eu_50_rand, SNPID)
+allSNP_50_randSW = dplyr::select(allSNP_eu_50_randSW, SNPID)
+write.table(allSNP_50_rand, "LD/allSNP_50_rand_bf3")
+write.table(allSNP_50_randSW, "LD/allSNP_50_randSW_bf3")
+
+topnotop_eu_2m50_randSW =rbind(topSNP_eu_2m50_randSW,notopSNP_eu_2m50_randSW)
+write.table(topnotop_eu_2m50_randSW, "LD/topnotop_eu_2m50_randSW_bf3")
+
+```
+
+Select random SNPs per window, AU
+```{r}
+SNP_au_50 = dplyr::select(ldna,SNPID)
+SNP_au_50$sub1 = SNP_au_50$SNPID
+bsnp_au1 = bsnp_au %>% 
+  select(envvar, myrank, sub1, BF) 
+
+#filter xtx table (90% missing data) on SNPs with 50% missing data (LD was calculated on this)
+xsnp_au50 = semi_join(xsnp_au, SNP_au_50, by="sub1") 
+
+#filter this 50% missing XTX table for outlier windows only
+topSNP_au_2m50_x = semi_join(xsnp_au50, wind_overlaptop_au_2m, by="windID") 
+
+#add GEA ranking based on BF scores to this data
+topSNP_au_2m50_xb1 = right_join(bsnp_au1, topSNP_au_2m50_x, by="sub1")
+
+topSNP_au_2m50_xb2 = topSNP_au_2m50_xb1[which(topSNP_au_2m50_xb1$myrank.x>0.99&topSNP_au_2m50_xb1$myrank.y>0.99&topSNP_au_2m50_xb1$BF>3),]
+topSNP_au_2m50_xb3 = dplyr::select(topSNP_au_2m50_xb2, sub1, windID, contig, location)
+topSNP_au_2m50_xb = dplyr::distinct(topSNP_au_2m50_xb3)
+
+topSNP_au_2m50_rand =  ddply(topSNP_au_2m50_xb, ~windID, function(x){ ndf <- x[sample(nrow(x),1), ]})
+topSNP_au_2m50_rand$SNPID=topSNP_au_2m50_rand$sub1
+write.table(topSNP_au_2m50_rand, "topSNP_au_2m50_rand_bf3")
+
+#select non-outlier SNPs
+notopSNP_au_2m50_x = anti_join(xsnp_au50, wind_overlaptop_au_1m, by = "windID") 
+notopSNP_au_2m50_xb1 = right_join(bsnp_au1, notopSNP_au_2m50_x, by="sub1")
+
+tmp = notopSNP_au_2m50_xb1[which(notopSNP_au_2m50_xb1$myrank.x>0.99|notopSNP_au_2m50_xb1$BF>3),]
+tmp2 = dplyr::distinct(dplyr::select(tmp, sub1)) # SNPs that have BF>0.99 for any of the env
+notopSNP_au_2m50_xb2 = dplyr::distinct( dplyr::select(notopSNP_au_2m50_xb1, sub1, windID, contig, location, myrank.y))
+notopSNP_au_2m50_xb3 = anti_join(notopSNP_au_2m50_xb2, tmp2, by="sub1")
+notopSNP_au_2m50_xb4 = notopSNP_au_2m50_xb3[which(notopSNP_au_2m50_xb3$myrank.y<0.99),]
+notopSNP_au_2m50_xb = dplyr::select(notopSNP_au_2m50_xb4, sub1, windID, contig, location)
+
+notopSNP_au_2m50_rand =  ddply(notopSNP_au_2m50_xb, ~windID, function(x){ ndf <- x[sample(nrow(x),1), ]})
+notopSNP_au_2m50_rand$SNPID=notopSNP_au_2m50_rand$sub1
+
+write.table(notopSNP_au_2m50_rand, "notopSNP_au_2m50_rand_bf3")
+
+#select 1 window at random, used for statistical calculations?
+topSNP_au_2m50_randSW =  ddply(topSNP_au_2m50_rand, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+notopSNP_au_2m50_randSW =  ddply(notopSNP_au_2m50_rand, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+topSNP_au_2m50_randSW$SNPID=topSNP_au_2m50_randSW$sub1
+notopSNP_au_2m50_randSW$SNPID=notopSNP_au_2m50_randSW$sub1
+
+write.table(topSNP_au_2m50_randSW, "topSNP_au_2m50_randSW_bf3")
+write.table(notopSNP_au_2m50_randSW, "notopSNP_au_2m50_randSW_bf3")
+
+allSNP_au_50_rand =  ddply(xsnp_au50, ~windID, function(x){ ndf <- x[sample(nrow(x),1), ]})
+allSNP_au_50_rand$SNPID=allSNP_au_50_rand$sub1
+write.table(allSNP_au_50_rand, "LD/allSNP_au_50_rand_bf3")
+allSNP_au_50_randSW =  ddply(allSNP_au_50_rand, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+write.table(allSNP_au_50_randSW, "LD/allSNP_au_50_randSW_bf3")
+
+#get the SNPIDs of randomly selected SNPs
+allSNP_50_rand = dplyr::select(allSNP_au_50_rand, SNPID)
+allSNP_50_randSW = dplyr::select(allSNP_au_50_randSW, SNPID)
+write.table(allSNP_50_rand, "LD/allSNP_50_rand_bf3")
+write.table(allSNP_50_randSW, "LD/allSNP_50_randSW_bf3")
+
+topnotop_au_2m50_randSW =rbind(topSNP_au_2m50_randSW,notopSNP_au_2m50_randSW)
+write.table(topnotop_au_2m50_randSW, "LD/topnotop_au_2m50_randSW_bf3")
+
+```
+
+*Link to LD input file* CAN RUN WITHOUT RUNNING ABOVE
+---
+```{r}
+ldna = read.table("LD/infiles/na_ddGBS50.5.7_LD_infile")
+ldeu = read.table("LD/infiles/eu_ddGBS50.5.7_LD_infile")
+ldau = read.table("LD/infiles/au_ddGBS50.5.7_LD_infile")
+
+ldna$SNPID = paste(ldna[,1],ldna[,2],sep = "__")
+ldeu$SNPID = paste(ldeu[,1],ldeu[,2],sep = "__")
+ldau$SNPID = paste(ldau[,1],ldau[,2],sep = "__")
+
+allSNP_50_rand=read.table("LD/allSNP_50_rand_bf3", header=T)
+allSNP_50_randSW=read.table("LD/allSNP_50_randSW_bf3", header=T)
+
+#NA
+topnotop_na_2m50_randSW=read.table("LD/topnotop_na_2m50_randSW_bf3", header=T)
+topSNP_na_2m50_rand=read.table("LD/topSNP_na_2m50_rand_bf3", header=T)
+notopSNP_na_2m50_rand=read.table("LD/notopSNP_na_2m50_rand_bf3", header=T)
+topSNP_na_2m50_randSW=read.table("LD/topSNP_na_2m50_randSW_bf3", header=T)
+notopSNP_na_2m50_randSW=read.table("LD/notopSNP_na_2m50_randSW_bf3", header=T)
+
+#randsel_na =gdata::combine(topSNP_na_2m50_rand,notopSNP_na_2m50_rand) #need to detach dplyr
+LD_rand_topnotop_na_SW = semi_join(ldna, topnotop_na_2m50_randSW, by="SNPID") 
+
+LD_rand_na = semi_join(ldna, allSNP_50_rand, by="SNPID") 
+LD_rand_top_na = semi_join(ldna, topSNP_na_2m50_rand, by="SNPID")
+LD_rand_notop_na = semi_join(ldna, notopSNP_na_2m50_rand, by="SNPID")
+
+#randsel_na_SW =gdata::combine(topSNP_na_2m50_randSW,notopSNP_na_2m50_randSW) #need to detach dplyr
+LD_rand_na_SW = semi_join(ldna, allSNP_2m50_randSW, by="SNPID") 
+LD_rand_top_na_SW = semi_join(ldna, topSNP_na_2m50_randSW, by="SNPID")
+LD_rand_notop_na_SW = semi_join(ldna, notopSNP_na_2m50_randSW, by="SNPID")
+
+#EU
+topnotop_eu_2m50_randSW=read.table("LD/topnotop_eu_2m50_randSW_bf3", header=T)
+topSNP_eu_2m50_rand=read.table("LD/topSNP_eu_2m50_rand_bf3", header=T)
+notopSNP_eu_2m50_rand=read.table("LD/notopSNP_eu_2m50_rand_bf3", header=T)
+topSNP_eu_2m50_randSW=read.table("LD/topSNP_eu_2m50_randSW_bf3", header=T)
+notopSNP_eu_2m50_randSW=read.table("LD/notopSNP_eu_2m50_randSW_bf3", header=T)
+
+#randsel_eu =gdata::combine(topSNP_eu_2m50_rand,notopSNP_eu_2m50_rand) #need to detach dplyr
+LD_rand_topnotop_eu_SW = semi_join(ldeu, topnotop_eu_2m50_randSW, by="SNPID") 
+
+LD_rand_eu = semi_join(ldeu, allSNP_50_rand, by="SNPID") 
+LD_rand_top_eu = semi_join(ldeu, topSNP_eu_2m50_rand, by="SNPID")
+LD_rand_notop_eu = semi_join(ldeu, notopSNP_eu_2m50_rand, by="SNPID")
+
+#randsel_eu_SW =gdata::combine(topSNP_eu_2m50_randSW,notopSNP_eu_2m50_randSW) #need to detach dplyr
+LD_rand_eu_SW = semi_join(ldeu, allSNP_2m50_randSW, by="SNPID") 
+LD_rand_top_eu_SW = semi_join(ldeu, topSNP_eu_2m50_randSW, by="SNPID")
+LD_rand_notop_eu_SW = semi_join(ldeu, notopSNP_eu_2m50_randSW, by="SNPID")
+
+#AU
+topnotop_au_2m50_randSW=read.table("LD/topnotop_au_2m50_randSW_bf3", header=T)
+allSNP_au_2m50_rand=read.table("LD/allSNP_au_2m50_rand_bf3", header=T)
+allSNP_au_2m50_randSW=read.table("LD/allSNP_au_2m50_randSW_bf3", header=T)
+topSNP_au_2m50_rand=read.table("LD/topSNP_au_2m50_rand_bf3", header=T)
+notopSNP_au_2m50_rand=read.table("LD/notopSNP_au_2m50_rand_bf3", header=T)
+topSNP_au_2m50_randSW=read.table("LD/topSNP_au_2m50_randSW_bf3", header=T)
+notopSNP_au_2m50_randSW=read.table("LD/notopSNP_au_2m50_randSW_bf3", header=T)
+
+#randsel_au =gdata::combine(topSNP_au_2m50_rand,notopSNP_au_2m50_rand) #need to detach dplyr
+LD_rand_topnotop_au_SW = semi_join(ldau, topnotop_au_2m50_randSW, by="SNPID") 
+LD_rand_au = semi_join(ldau, allSNP_50_rand, by="SNPID") 
+LD_rand_top_au = semi_join(ldau, topSNP_au_2m50_rand, by="SNPID")
+LD_rand_notop_au = semi_join(ldau, notopSNP_au_2m50_rand, by="SNPID")
+
+#randsel_au_SW =gdata::combine(topSNP_au_2m50_randSW,notopSNP_au_2m50_randSW) #need to detach dplyr
+LD_rand_au_SW = semi_join(ldau, allSNP_2m50_randSW, by="SNPID") 
+LD_rand_top_au_SW = semi_join(ldau, topSNP_au_2m50_randSW, by="SNPID")
+LD_rand_notop_au_SW = semi_join(ldau, notopSNP_au_2m50_randSW, by="SNPID")
+```
+
+
+Calculate LD Based on SNPID NA
+---
+```{r}
+
+#select SNPID and inds
+input= LD_rand_na[,c(ncol(LD_rand_na),3:(ncol(LD_rand_na)-1))]
+
+#this is the list of contigs and positions for each genotype
+scafpos_good <- as.matrix (input[,1])
+
+#this keeps the columns correct: 
+input_good = data.matrix(input[,2:dim(input)[2]])
+
+# Check if R is able to handle the amount of data 2^31 is the maximum extent of each dimension of an array R is able to handle
+(nrow(input_good)^2)*3 < 2^31
+
+results_out <- array (NA, c(((nrow (input_good))^2),3))
+count = 0
+
+#loop through focal snp
+for (i in 1:nrow(input_good)){
+#       loop through all SNPs
+        for (j in 1:nrow (input_good)){
+                if (i != j){
+                count <- count + 1
+                 results_out[count,3] <- cor (input_good[i,], input_good[j,], use = "pairwise.complete.obs")
+                results_out [count,1] <- as.character (scafpos_good[i,1])
+                results_out [count,2] <- as.character (scafpos_good[j,1])
+                }
+        }
+}
+
+write.table (results_out[1:count,],"LD/LD_na50_ddgbs_random_results_out_new",row.names = F, col.names = F, quote = F)
+```
+
+Calculate LD Based on SNPID EU
+---
+```{r}
+#select SNPID and inds
+input= LD_rand_eu[,c(ncol(LD_rand_eu),3:(ncol(LD_rand_eu)-1))]
+
+#this is the list of contigs and positions for each genotype
+scafpos_good <- as.matrix (input[,1])
+
+#this keeps the columns correct: 
+input_good = data.matrix(input[,2:dim(input)[2]])
+
+# Check if R is able to handle the amount of data 2^31 is the maximum extent of each dimension of an array R is able to handle
+(nrow(input_good)^2)*3 < 2^31
+
+results_out <- array (NA, c(((nrow (input_good))^2),3))
+count = 0
+
+#loop through focal snp
+for (i in 1:nrow(input_good)){
+#       loop through all SNPs
+        for (j in 1:nrow (input_good)){
+                if (i != j){
+                count <- count + 1
+                 results_out[count,3] <- cor (input_good[i,], input_good[j,], use = "pairwise.complete.obs")
+                results_out [count,1] <- as.character (scafpos_good[i,1])
+                results_out [count,2] <- as.character (scafpos_good[j,1])
+                }
+        }
+}
+
+write.table (results_out[1:count,],"LD/LD_eu50_ddgbs_random_results_out_new",row.names = F, col.names = F, quote = F)
+```
+
+Calculate LD Based on SNPID AU
+---
+```{r}
+#select SNPID and inds
+input= LD_rand_au[,c(ncol(LD_rand_au),3:(ncol(LD_rand_au)-1))]
+
+#this is the list of contigs and positions for each genotype
+scafpos_good <- as.matrix (input[,1])
+
+#this keeps the columns correct: 
+input_good = data.matrix(input[,2:dim(input)[2]])
+
+# Check if R is able to handle the amount of data 2^31 is the maximum extent of each dimension of an array R is able to handle
+(nrow(input_good)^2)*3 < 2^31
+
+results_out <- array (NA, c(((nrow (input_good))^2),3))
+count = 0
+
+#loop through focal snp
+for (i in 1:nrow(input_good)){
+#       loop through all SNPs
+        for (j in 1:nrow (input_good)){
+                if (i != j){
+                count <- count + 1
+                 results_out[count,3] <- cor (input_good[i,], input_good[j,], use = "pairwise.complete.obs")
+                results_out [count,1] <- as.character (scafpos_good[i,1])
+                results_out [count,2] <- as.character (scafpos_good[j,1])
+                }
+        }
+}
+
+write.table (results_out[1:count,],"LD/LD_au50_ddgbs_random_results_out_new",row.names = F, col.names = F, quote = F)
+```
+
+
+
+
+##END SCRIPT##
+===

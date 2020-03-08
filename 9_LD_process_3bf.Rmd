@@ -1,0 +1,308 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+LD analyses
+===  
+
+> Script by Lotte van Boheemen  
+
+```{r, include=F}
+library("dplyr")
+library("plyr")
+library("perm")
+library("visreg")
+library("ade4")
+library(lme4)
+library(nlme)
+library(ggplot2)
+library(tidyr)
+library("phia")
+library(lmerTest)
+library(pbkrtest)
+library("car") #for Anova (with capital A)
+```
+
+
+Read in the data. Note that below LD is calculated within and not among scaffolds
+---  
+```{r}
+LDNA <- read.table("LD/infiles/LD_na50_ddgbs_results_out")
+LDEU <- read.table("LD/infiles/LD_eu50_ddgbs_results_out")
+LDAU <- read.table("LD/infiles/LD_au50_ddgbs_results_out")
+
+colnames(LDNA) <- c("Scaf1","Loc1","Scaf2","Loc2","Corr")
+colnames(LDEU) <- c("Scaf1","Loc1","Scaf2","Loc2","Corr")
+colnames(LDAU) <- c("Scaf1","Loc1","Scaf2","Loc2","Corr")
+
+LDNA$Dist <- abs(LDNA$Loc2-LDNA$Loc1)
+LDNA$sub1 <- paste(LDNA$Scaf1,LDNA$Loc1,sep="__")
+LDNA$sub2 <- paste(LDNA$Scaf2,LDNA$Loc2,sep="__")
+
+LDEU$Dist <- abs(LDEU$Loc2-LDEU$Loc1)
+LDEU$sub1 <- paste(LDEU$Scaf1,LDEU$Loc1,sep="__")
+LDEU$sub2 <- paste(LDEU$Scaf2,LDEU$Loc2,sep="__")
+
+LDAU$Dist <- abs(LDAU$Loc2-LDAU$Loc1)
+LDAU$sub1 <- paste(LDAU$Scaf1,LDAU$Loc1,sep="__")
+LDAU$sub2 <- paste(LDAU$Scaf2,LDAU$Loc2,sep="__")
+```
+
+Read data winds
+```{r}
+cdata <- read.table("rawfiles/refgenome_data.txt",header=T)
+
+#wind_na = read.table("bf_1000_99_allwind/sresbfall_na_1000_99_allwind.txt", header=T)
+#wind_eu = read.table("bf_1000_99_allwind/sresbfall_eu_1000_99_allwind.txt", header=T)
+#wind_au = read.table("bf_1000_99_allwind/sresbfall_au_1000_99_allwind.txt", header=T)
+
+wind_na = read.table("bf_90miss_99bf3/sresbfall_na_1000_993_90miss.txt", header=T)
+wind_eu = read.table("bf_90miss_99bf3/sresbfall_eu_1000_993_90miss.txt", header=T)
+wind_au = read.table("bf_90miss_99bf3/sresbfall_au_1000_993_90miss.txt", header=T)
+xwind_na = read.table("xtx_1000_99_allwind/sres1000-1000_na99_allwinds", header=T)
+xwind_eu = read.table("xtx_1000_99_allwind/sres1000-1000_eu99_allwinds", header=T)
+xwind_au = read.table("xtx_1000_99_allwind/sres1000-1000_au99_allwinds", header=T)
+xwind_na$windID = paste0(xwind_na$contig, "__", xwind_na$win.start)
+xwind_eu$windID = paste0(xwind_eu$contig, "__", xwind_eu$win.start)
+xwind_au$windID = paste0(xwind_au$contig, "__", xwind_au$win.start)
+wind_na$windID = paste0(wind_na$contig, "__", wind_na$win.start)
+wind_eu$windID = paste0(wind_eu$contig, "__", wind_eu$win.start)
+wind_au$windID = paste0(wind_au$contig, "__", wind_au$win.start)
+
+allwindows1 = read.table("xtx_1000_99_allwind/xtxall_1000-1000_top99_allwinds", header=T)
+allSNPS = read.table("xtx_1000_99_allwind/xtxna_1000-1000_top99_allwinds_SNPinfo", header=T)
+allwindows = select(allwindows1, contig,  win.start)
+allSNPS = select(allSNPS, contig, location, win.start)
+allwindows$windID = paste0(allwindows$contig, "__", allwindows$win.start)
+
+allSNPS$windID = paste0(allSNPS$contig, "__", allSNPS$win.start)
+allSNPS$sub1 = paste0(allSNPS$contig, allSNPS$location, sep="__")
+allSNPS$sub2 = paste0(allSNPS$contig, allSNPS$location, sep="__")
+
+gcta_allwind = read.table("gcta_1000_allwind/gcta_all_1000-1000_top99_allwinds", header=T)
+gcta_allwind$windID = paste0(gcta_allwind$contig,"__",gcta_allwind$win.start)
+gcta = read.table("gcta_1000_allwind/gcta_1000_top99_supwind", header=T)
+gcta$windID = paste0(gcta$contig,"__",gcta$win.start)
+
+#bfn_sup = read.table("bf_1000_99_allwind/mbf_1000_99_binnullW.txt", header=T)
+bfn_sup = read.table("bf_90miss_99bf3/mbf_1000_993_binnullW_90miss.txt", header=T)
+
+xtxn_sup = read.table("xtx_1000_99_allwind/mxtx_1000_99_binnullW.txt", header=T)
+
+bfn_sup_NA = bfn_sup %>% filter(Range=="nat"& qbinom=="yes") %>% droplevels()
+bfn_sup_EU = bfn_sup %>% filter(Range=="eu"& qbinom=="yes") %>% droplevels()
+bfn_sup_AU = bfn_sup %>% filter(Range=="au"& qbinom=="yes") %>% droplevels()
+xn_sup_NA = xtxn_sup %>% filter(Range=="nat"& binom=="yes") %>% droplevels()
+xn_sup_EU = xtxn_sup %>% filter(Range=="EU"&binom=="yes") %>% droplevels()
+xn_sup_AU = xtxn_sup %>% filter(Range=="EU"&binom=="yes") %>% droplevels()
+```
+
+```{r}
+xsnp_na <- read.table("xtx_1000_99_allwind/xtxna_1000-1000_top99_allwinds_SNPinfo",header = T)
+xsnp_na$sub1 <- paste(xsnp_na$contig, xsnp_na$location, sep="__")
+xsnp_na$sub2 <- xsnp_na$sub1
+xsnp_na$windID = paste0(xsnp_na$contig, "__", xsnp_na$win.start)
+
+xsnp_eu <- read.table("xtx_1000_99_allwind/xtxeu_1000-1000_top99_allwinds_SNPinfo",header = T)
+xsnp_eu$sub1 <- paste(xsnp_eu$contig, xsnp_eu$location, sep="__")
+xsnp_eu$sub2 <- xsnp_eu$sub1
+xsnp_eu$windID = paste0(xsnp_eu$contig, "__", xsnp_eu$win.start)
+
+xsnp_au <- read.table("xtx_1000_99_allwind/xtxau_1000-1000_top99_allwinds_SNPinfo",header = T)
+xsnp_au$sub1 <- paste(xsnp_au$contig, xsnp_au$location, sep="__")
+xsnp_au$sub2 <- xsnp_au$sub1
+xsnp_au$windID = paste0(xsnp_au$contig, "__", xsnp_au$win.start)
+
+xsnp_na$windID = as.factor(xsnp_na$windID)
+```
+
+Window has to have hit in at least 2 methods within a range (based on binom )
+---
+```{r}
+bfn_sup_NAall = as.data.frame(levels(as.factor(bfn_sup_NA$windID)))
+colnames(bfn_sup_NAall) = "windID"
+
+xn_sup_NAall = select(xn_sup_NA, windID)
+bfn_sup_EUall = as.data.frame(levels(as.factor(bfn_sup_EU$windID)))
+colnames(bfn_sup_EUall) = "windID"
+xn_sup_EUall = select(xn_sup_EU, windID)
+bfn_sup_AUall = as.data.frame(levels(as.factor(bfn_sup_AU$windID)))
+colnames(bfn_sup_AUall) = "windID"
+xn_sup_AUall = select(xn_sup_AU, windID)
+
+bfxtx_sup_NA = intersect(xn_sup_NA$windID, bfn_sup_NAall$windID)
+bfxtx_sup_AU = intersect(xn_sup_AU$windID, bfn_sup_AUall$windID)
+bfxtx_sup_EU = intersect(xn_sup_EU$windID, bfn_sup_EUall$windID)
+
+gctawi = select(gcta, windID)
+bfgcta_sup_NA = intersect(gcta$windID, bfn_sup_NAall$windID)
+bfgcta_sup_EU = intersect(gcta$windID, bfn_sup_EUall$windID)
+bfgcta_sup_AU = intersect(gcta$windID, bfn_sup_AUall$windID)
+
+xgcta_sup_NA = intersect(gcta$windID, xn_sup_NA$windID)
+xgcta_sup_EU = intersect(gcta$windID,  xn_sup_EU$windID)
+xgcta_sup_AU = intersect(gcta$windID, xn_sup_AU$windID)
+
+bfxtxgcta_sup_NA = intersect(bfxtx_sup_NA, gcta$windID) #conflicts with MASS
+bfxtxgcta_sup_EU = intersect(bfxtx_sup_EU, gcta$windID) 
+bfxtxgcta_sup_AU = intersect(bfxtx_sup_AU, gcta$windID) 
+```
+
+```{r}
+#found in at least 1 methods
+onemeth_NA = rbind(bfn_sup_NAall, xn_sup_NAall)
+onemeth_EU = rbind(bfn_sup_EUall, xn_sup_EUall)
+onemeth_AU = rbind(bfn_sup_AUall, xn_sup_AUall)
+
+#windows in no meth
+nometh_NA = anti_join(allwindows, onemeth_NA, by = "windID")
+nometh_EU = anti_join(allwindows, onemeth_EU, by = "windID")
+nometh_AU = anti_join(allwindows, onemeth_AU, by = "windID")
+
+#select 1 window at random
+nometh_NA_randwind =  ddply(nometh_NA, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+nometh_EU_randwind =  ddply(nometh_EU, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+nometh_AU_randwind =  ddply(nometh_AU, ~contig, function(x){ndf <- x[sample(nrow(x),1), ]})
+
+#found in at least 2 methods
+
+twometh_NA = as.data.frame(bfxtx_sup_NA)
+twometh_EU = as.data.frame(bfxtx_sup_EU)
+twometh_AU = as.data.frame(bfxtx_sup_AU)
+colnames(twometh_NA) = "windID"
+colnames(twometh_EU) = "windID"
+colnames(twometh_AU) = "windID"
+
+#check if multiple windows per scaffold
+twometh_NA1= separate(data = twometh_NA, col = windID, into = c("Scaf1", "Loc1"), sep = "__")
+twometh_EU1= separate(data = twometh_EU, col = windID, into = c("Scaf1", "Loc1"), sep = "__")
+twometh_AU1= separate(data = twometh_AU, col = windID, into = c("Scaf1", "Loc1"), sep = "__")
+```
+
+Select LD
+---
+```{r}
+SNP_nonsuper_na = left_join(xsnp_na,nometh_NA_randwind, by="windID" )
+SNP_nonsuper_na1 <- select(SNP_nonsuper_na, sub1, windID)
+SNP_nonsuper_na2<- select(SNP_nonsuper_na, sub2, windID)
+temp <- inner_join(LDNA, SNP_nonsuper_na1, by ="sub1")
+temp2<- inner_join(temp, SNP_nonsuper_na2, by ="sub2")
+LD_nonoutwind_na <-temp2 [which(temp2$windID.x== temp2$windID.y),]
+
+SNP_super_na = inner_join(xsnp_na,twometh_NA, by="windID" )
+intersect(xsnp_na$windID, twometh_NA$windID)
+
+SNP_super_na1 <- select(SNP_super_na, sub1, windID)
+SNP_super_na2<- select(SNP_super_na, sub2, windID)
+temp <- inner_join(LDNA, SNP_super_na1, by ="sub1")
+temp2<- inner_join(temp, SNP_super_na2, by ="sub2")
+LD_outwind_na <-temp2 [which(temp2$windID.x== temp2$windID.y),]
+
+SNP_nonsuper_eu = left_join(xsnp_eu,nometh_EU_randwind, by="windID" )
+SNP_nonsuper_eu1 <- select(SNP_nonsuper_eu, sub1, windID)
+SNP_nonsuper_eu2<- select(SNP_nonsuper_eu, sub2, windID)
+temp <- inner_join(LDNA, SNP_nonsuper_eu1, by ="sub1")
+temp2<- inner_join(temp, SNP_nonsuper_eu2, by ="sub2")
+LD_nonoutwind_eu <-temp2 [which(temp2$windID.x== temp2$windID.y),]
+SNP_super_eu = right_join(xsnp_eu,twometh_EU, by="windID" )
+SNP_super_eu1 <- select(SNP_super_eu, sub1, windID)
+SNP_super_eu2<- select(SNP_super_eu, sub2, windID)
+temp <- inner_join(LDNA, SNP_super_eu1, by ="sub1")
+temp2<- inner_join(temp, SNP_super_eu2, by ="sub2")
+LD_outwind_eu <-temp2 [which(temp2$windID.x== temp2$windID.y),]
+
+#SNP_nonsuper_au = anti_join(xsnp_au,onemeth_AU, by="windID" )
+SNP_nonsuper_au = left_join(xsnp_au,nometh_AU_randwind, by="windID" )
+SNP_nonsuper_au1 <- select(SNP_nonsuper_au, sub1, windID)
+SNP_nonsuper_au2<- select(SNP_nonsuper_au, sub2, windID)
+temp <- inner_join(LDNA, SNP_nonsuper_au1, by ="sub1")
+temp2<- inner_join(temp, SNP_nonsuper_au2, by ="sub2")
+LD_nonoutwind_au <-temp2 [which(temp2$windID.x== temp2$windID.y),]
+SNP_super_au = right_join(xsnp_au,twometh_AU, by="windID" )
+SNP_super_au1 <- select(SNP_super_au, sub1, windID)
+SNP_super_au2<- select(SNP_super_au, sub2, windID)
+temp <- inner_join(LDNA, SNP_super_au1, by ="sub1")
+temp2<- inner_join(temp, SNP_super_au2, by ="sub2")
+LD_outwind_au <-temp2 [which(temp2$windID.x== temp2$windID.y),]
+
+LD_outwind_na$selc = "outlier"
+LD_nonoutwind_na$selc = "nonoutlier"
+LD_allwind_na = rbind(LD_outwind_na, LD_nonoutwind_na)
+LD_allwind_na$range = "NA."
+LD_outwind_eu$selc = "outlier"
+LD_nonoutwind_eu$selc = "nonoutlier"
+LD_allwind_eu = rbind(LD_outwind_eu, LD_nonoutwind_eu)
+LD_allwind_eu$range = "EU"
+LD_outwind_au$selc = "outlier"
+LD_nonoutwind_au$selc = "nonoutlier"
+LD_allwind_au = rbind(LD_outwind_au, LD_nonoutwind_au)
+LD_allwind_au$range = "AU"
+
+LD_allwind_all = as.data.frame(rbind(LD_allwind_na, LD_allwind_eu, LD_allwind_au))
+LD_allwind_all$sub3 = paste0(LD_allwind_all$sub1, LD_allwind_all$sub2, "__")
+LD_allwind_all = select(LD_allwind_all, Scaf1,Corr, Dist,sub3,selc, range)
+```
+
+
+```{r}
+LD_allwind_all$RangeTreat <- interaction(LD_allwind_all$range, LD_allwind_all$selc)
+LD_allwind_all$Corrabs <- abs(LD_allwind_all$Corr)
+LD_allwind_all$range <- as.factor(LD_allwind_all$range)
+hist(sqrt(abs(LD_allwind_all$Corr)))
+hist(sqrt((LD_allwind_all$Dist)))
+
+contr <- contrastCoefficients(
+  RangeTreat ~  AU.nonoutlier-EU.nonoutlier,
+  RangeTreat ~ AU.nonoutlier-NA..nonoutlier,
+  RangeTreat ~ EU.nonoutlier-NA..nonoutlier,
+  RangeTreat ~ AU.outlier-EU.outlier,
+  RangeTreat ~ AU.outlier-NA..outlier,
+  RangeTreat ~ EU.outlier-NA..outlier,
+  RangeTreat ~ AU.nonoutlier-AU.outlier,
+  RangeTreat ~ EU.nonoutlier-EU.outlier,
+  RangeTreat ~ NA..nonoutlier-NA..outlier,
+  data=LD_allwind_all)
+  
+colnames(contr$RangeTreat) <- c("F.AU.vs.EU", "F.AU.vs.NA", "F.EU.vs.NA", "T.AU.vs.EU", "T.AU.vs.NA", "T.EU.vs.NA", "AU.F.vs.T", "EU.F.vs.T","NA.F.vs.T")
+```
+
+
+Is linkage different between ranges or between outlier windows 
+```{r}
+m <- lm(sqrt(Corrabs)~sqrt(Dist)*range*selc,  data=LD_allwind_all)
+Anova(m,type =3, test.statistic="F")
+
+mod <- lm(sqrt(Corrabs)~sqrt(Dist)*RangeTreat,  data=LD_allwind_all)
+
+testInteractions(mod, custom = contr, slope = "sqrt(Dist)")
+interactionMeans(mod, custom = contr, slope = "sqrt(Dist)")
+
+plot(interactionMeans(mod, custom = contr, slope = "sqrt(Dist)"))
+
+LDdummy<- LD_allwind_all[ ,which(names(LD_allwind_all) %in% c("Dist","RangeTreat","LD_allwind_allrange","range","selc","Corrabs"))]
+LDdummy<-LDdummy[complete.cases(LDdummy), ]
+
+fitted <- predict(mod, interval="confidence")
+fitted2 <- fitted^2
+LDdummy<-cbind(LDdummy,fitted2)
+  a <-LDdummy[which(LDdummy$selc=="outlier"),]
+b <-LDdummy[which(LDdummy$selc=="nonoutlier"),]
+
+#pdf("_Graph/LDdecayranges_10002meth_bf3_bin.pdf", height=6, width = 6)
+ggplot(a,aes(x=Dist, y=Corrabs, color=factor(range), shape=factor(range))) +
+  geom_point(size=0.05, aes(fill=factor(range), alpha=rev(as.character(selc))))+
+  geom_point(size=0.05) +  scale_shape_manual(values=c(21,22,24))+ theme_bw()+  ylab("Absolute correlation between SNPs within windows (Spearman's rho)")+ xlab("Distance (basepair)") +theme(legend.position = "none")+ geom_line(data=a, aes(y=fit)) + geom_ribbon(data=a,aes(ymin=lwr,ymax=upr, fill=factor(range)),alpha=0.3, lty=0)+ geom_line(data=b,aes(y=fit), lty=2)  + geom_ribbon(data=b,aes(ymin=lwr,ymax=upr,fill=factor(range)), alpha=0.1, lty=0) #+scale_y_sqrt(breaks=c(0.05,1,seq(0,1,by=0.25)))+ scale_x_sqrt(breaks= c(50,100,seq(0,1000,by=200)))
+#dev.off()
+
+
+ggplot(aes(y=abs(Corrabs), x=selc), data=LDdummy) + 
+  geom_boxplot(outlier.colour = NA) + theme_bw() + guides(fill=F)+ 
+  theme(  legend.position = "none", panel.grid.minor = element_blank()) +
+  scale_shape_manual(values =c(21,22,24)) + scale_alpha_discrete(range=c(0.5 ,1))+
+   scale_linetype_manual(values=c(2,1))+
+  scale_y_sqrt(limits=c(0,0.5),breaks=c(0.01,0.05,0.1,0.25,0.5))
+dev.off()
+```
+
+##END SCRIPT##
